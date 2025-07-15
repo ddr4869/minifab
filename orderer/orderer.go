@@ -11,6 +11,7 @@ import (
 
 	"github.com/ddr4869/minifab/common/logger"
 	"github.com/ddr4869/minifab/common/msp"
+	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
 )
 
@@ -157,11 +158,11 @@ func NewOrdererWithMSPFiles(mspID string, mspPath string) *Orderer {
 
 func (o *Orderer) CreateBlock(data []byte) (*Block, error) {
 	if len(data) < MinBlockDataSize {
-		return nil, fmt.Errorf("block data cannot be empty")
+		return nil, errors.New("block data cannot be empty")
 	}
 
 	if len(data) > MaxBlockDataSize {
-		return nil, fmt.Errorf("block data size %d exceeds maximum allowed size %d", len(data), MaxBlockDataSize)
+		return nil, errors.Errorf("block data size %d exceeds maximum allowed size %d", len(data), MaxBlockDataSize)
 	}
 
 	o.mutex.Lock()
@@ -221,7 +222,7 @@ func (o *Orderer) CreateChannel(channelName string) error {
 	defer o.mutex.Unlock()
 
 	if _, exists := o.channels[channelName]; exists {
-		return fmt.Errorf("channel %s already exists", channelName)
+		return errors.Errorf("channel %s already exists", channelName)
 	}
 
 	// 채널용 MSP 생성
@@ -235,7 +236,7 @@ func (o *Orderer) CreateChannel(channelName string) error {
 	}
 
 	if err := channelMSP.Setup(config); err != nil {
-		return fmt.Errorf("failed to setup channel MSP: %w", err)
+		return errors.Wrap(err, "failed to setup channel MSP")
 	}
 
 	o.channels[channelName] = &Channel{
@@ -251,16 +252,16 @@ func (o *Orderer) CreateChannel(channelName string) error {
 // ValidateTransaction 트랜잭션 검증 (MSP 사용)
 func (o *Orderer) ValidateTransaction(channelID string, serializedIdentity []byte, signature []byte, payload []byte) error {
 	if channelID == "" {
-		return fmt.Errorf("channel ID cannot be empty")
+		return errors.New("channel ID cannot be empty")
 	}
 	if len(serializedIdentity) == 0 {
-		return fmt.Errorf("serialized identity cannot be empty")
+		return errors.New("serialized identity cannot be empty")
 	}
 	if len(signature) == 0 {
-		return fmt.Errorf("signature cannot be empty")
+		return errors.New("signature cannot be empty")
 	}
 	if len(payload) == 0 {
-		return fmt.Errorf("payload cannot be empty")
+		return errors.New("payload cannot be empty")
 	}
 
 	o.mutex.RLock()
@@ -268,23 +269,23 @@ func (o *Orderer) ValidateTransaction(channelID string, serializedIdentity []byt
 	o.mutex.RUnlock()
 
 	if !exists {
-		return fmt.Errorf("channel %s not found", channelID)
+		return errors.Errorf("channel %s not found", channelID)
 	}
 
 	// Identity 역직렬화
 	identity, err := channel.MSP.DeserializeIdentity(serializedIdentity)
 	if err != nil {
-		return fmt.Errorf("failed to deserialize identity: %w", err)
+		return errors.Wrap(err, "failed to deserialize identity")
 	}
 
 	// Identity 검증
 	if err := channel.MSP.ValidateIdentity(identity); err != nil {
-		return fmt.Errorf("invalid identity: %w", err)
+		return errors.Wrap(err, "invalid identity")
 	}
 
 	// 서명 검증
 	if err := identity.Verify(payload, signature); err != nil {
-		return fmt.Errorf("signature verification failed: %w", err)
+		return errors.Wrap(err, "signature verification failed")
 	}
 
 	return nil
@@ -317,7 +318,7 @@ func (o *Orderer) GetBlock(blockNumber uint64) (*Block, error) {
 	defer o.mutex.RUnlock()
 
 	if blockNumber >= uint64(len(o.blocks)) {
-		return nil, fmt.Errorf("block %d not found", blockNumber)
+		return nil, errors.Errorf("block %d not found", blockNumber)
 	}
 
 	return o.blocks[blockNumber], nil
@@ -338,7 +339,7 @@ func (o *Orderer) GetChannels() []string {
 // GetChannel returns a channel by name
 func (o *Orderer) GetChannel(channelName string) (*Channel, error) {
 	if channelName == "" {
-		return nil, fmt.Errorf("channel name cannot be empty")
+		return nil, errors.New("channel name cannot be empty")
 	}
 
 	o.mutex.RLock()
@@ -346,7 +347,7 @@ func (o *Orderer) GetChannel(channelName string) (*Channel, error) {
 
 	channel, exists := o.channels[channelName]
 	if !exists {
-		return nil, fmt.Errorf("channel %s not found", channelName)
+		return nil, errors.Errorf("channel %s not found", channelName)
 	}
 
 	return channel, nil
@@ -366,12 +367,12 @@ func (o *Orderer) BootstrapNetwork(genesisConfig *GenesisConfig) error {
 	// 1. 제네시스 블록 생성
 	genesisBlock, err := o.generateGenesisBlock(genesisConfig)
 	if err != nil {
-		return fmt.Errorf("failed to generate genesis block: %w", err)
+		return errors.Wrap(err, "failed to generate genesis block")
 	}
 
 	// 2. 네트워크 상태 초기화
 	if err := o.initializeNetworkState(genesisBlock, genesisConfig); err != nil {
-		return fmt.Errorf("failed to initialize network state: %w", err)
+		return errors.Wrap(err, "failed to initialize network state")
 	}
 
 	// 3. 부트스트랩 완료
@@ -384,11 +385,11 @@ func (o *Orderer) BootstrapNetwork(genesisConfig *GenesisConfig) error {
 // validateBootstrapPreconditions 부트스트랩 전제조건 검증
 func (o *Orderer) validateBootstrapPreconditions(genesisConfig *GenesisConfig) error {
 	if o.isBootstrapped {
-		return fmt.Errorf("network is already bootstrapped")
+		return errors.New("network is already bootstrapped")
 	}
 
 	if genesisConfig == nil {
-		return fmt.Errorf("genesis config cannot be nil")
+		return errors.New("genesis config cannot be nil")
 	}
 
 	return nil
@@ -398,12 +399,12 @@ func (o *Orderer) validateBootstrapPreconditions(genesisConfig *GenesisConfig) e
 func (o *Orderer) generateGenesisBlock(genesisConfig *GenesisConfig) (*GenesisBlock, error) {
 	generator, err := NewGenesisBlockGenerator(genesisConfig)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create genesis block generator: %w", err)
+		return nil, errors.Wrap(err, "failed to create genesis block generator")
 	}
 
 	genesisBlock, err := generator.GenerateGenesisBlock()
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate genesis block: %w", err)
+		return nil, errors.Wrap(err, "failed to generate genesis block")
 	}
 
 	logger.Info("Genesis block generated successfully",
@@ -427,7 +428,7 @@ func (o *Orderer) initializeNetworkState(genesisBlock *GenesisBlock, genesisConf
 
 	// 시스템 채널 생성
 	if err := o.createSystemChannel(genesisConfig); err != nil {
-		return fmt.Errorf("failed to create system channel: %w", err)
+		return errors.Wrap(err, "failed to create system channel")
 	}
 
 	return nil
@@ -480,7 +481,7 @@ func (o *Orderer) createSystemChannel(genesisConfig *GenesisConfig) error {
 	}
 
 	if err := systemMSP.Setup(config); err != nil {
-		return fmt.Errorf("failed to setup system channel MSP: %w", err)
+		return errors.Wrap(err, "failed to setup system channel MSP")
 	}
 
 	// 시스템 채널 생성
@@ -518,7 +519,7 @@ func (o *Orderer) GetSystemChannel() string {
 // SaveGenesisBlock 제네시스 블록을 파일로 저장
 func (o *Orderer) SaveGenesisBlock(filePath string) error {
 	if filePath == "" {
-		return fmt.Errorf("file path cannot be empty")
+		return errors.New("file path cannot be empty")
 	}
 
 	o.mutex.RLock()
@@ -526,16 +527,16 @@ func (o *Orderer) SaveGenesisBlock(filePath string) error {
 	o.mutex.RUnlock()
 
 	if genesisBlock == nil {
-		return fmt.Errorf("no genesis block to save")
+		return errors.New("no genesis block to save")
 	}
 
 	data, err := json.MarshalIndent(genesisBlock, "", "  ")
 	if err != nil {
-		return fmt.Errorf("failed to marshal genesis block: %w", err)
+		return errors.Wrap(err, "failed to marshal genesis block")
 	}
 
 	if err := os.WriteFile(filePath, data, 0644); err != nil {
-		return fmt.Errorf("failed to write genesis block file: %w", err)
+		return errors.Wrap(err, "failed to write genesis block file")
 	}
 
 	logger.Infof("Genesis block saved to %s", filePath)
@@ -545,17 +546,17 @@ func (o *Orderer) SaveGenesisBlock(filePath string) error {
 // LoadGenesisBlock 파일에서 제네시스 블록 로드
 func (o *Orderer) LoadGenesisBlock(filePath string) error {
 	if filePath == "" {
-		return fmt.Errorf("file path cannot be empty")
+		return errors.New("file path cannot be empty")
 	}
 
 	data, err := os.ReadFile(filePath)
 	if err != nil {
-		return fmt.Errorf("failed to read genesis block file: %w", err)
+		return errors.Wrap(err, "failed to read genesis block file")
 	}
 
 	var genesisBlock GenesisBlock
 	if err := json.Unmarshal(data, &genesisBlock); err != nil {
-		return fmt.Errorf("failed to unmarshal genesis block: %w", err)
+		return errors.Wrap(err, "failed to unmarshal genesis block")
 	}
 
 	o.mutex.Lock()
@@ -578,28 +579,28 @@ func (o *Orderer) LoadGenesisBlock(filePath string) error {
 // validateChannelName validates channel name according to Fabric rules
 func validateChannelName(channelName string) error {
 	if channelName == "" {
-		return fmt.Errorf("channel name cannot be empty")
+		return errors.New("channel name cannot be empty")
 	}
 
 	if len(channelName) < MinChannelNameLength {
-		return fmt.Errorf("channel name must be at least %d characters", MinChannelNameLength)
+		return errors.Errorf("channel name must be at least %d characters", MinChannelNameLength)
 	}
 
 	if len(channelName) > MaxChannelNameLength {
-		return fmt.Errorf("channel name cannot exceed %d characters", MaxChannelNameLength)
+		return errors.Errorf("channel name cannot exceed %d characters", MaxChannelNameLength)
 	}
 
 	// Channel names must be lowercase and contain only alphanumeric characters, dots, and dashes
 	for _, char := range channelName {
 		if !((char >= 'a' && char <= 'z') || (char >= '0' && char <= '9') || char == '.' || char == '-') {
-			return fmt.Errorf("channel name contains invalid character '%c'. Only lowercase letters, numbers, dots, and dashes are allowed", char)
+			return errors.Errorf("channel name contains invalid character '%c'. Only lowercase letters, numbers, dots, and dashes are allowed", char)
 		}
 	}
 
 	// Channel name cannot start or end with a dot or dash
 	if channelName[0] == '.' || channelName[0] == '-' ||
 		channelName[len(channelName)-1] == '.' || channelName[len(channelName)-1] == '-' {
-		return fmt.Errorf("channel name cannot start or end with '.' or '-'")
+		return errors.Errorf("channel name cannot start or end with '.' or '-'")
 	}
 
 	return nil
@@ -608,30 +609,30 @@ func validateChannelName(channelName string) error {
 // CreateGenesisConfigFromConfigTx configtx.yaml 파일에서 GenesisConfig 생성
 func CreateGenesisConfigFromConfigTx(configTxPath string) (*GenesisConfig, error) {
 	if configTxPath == "" {
-		return nil, fmt.Errorf("configtx path cannot be empty")
+		return nil, errors.Errorf("configtx path cannot be empty")
 	}
 
 	// configtx.yaml 파일 존재 확인
 	if _, err := os.Stat(configTxPath); os.IsNotExist(err) {
-		return nil, fmt.Errorf("configtx file does not exist: %s", configTxPath)
+		return nil, errors.Errorf("configtx file does not exist: %s", configTxPath)
 	}
 
 	// configtx.yaml 파일 읽기
 	data, err := os.ReadFile(configTxPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read configtx file: %w", err)
+		return nil, errors.Wrap(err, "failed to read configtx file")
 	}
 
 	// YAML 파싱
 	var configTx ConfigTxYAML
 	if err := yaml.Unmarshal(data, &configTx); err != nil {
-		return nil, fmt.Errorf("failed to parse configtx YAML: %w", err)
+		return nil, errors.Wrap(err, "failed to parse configtx YAML")
 	}
 
 	// ConfigTxYAML을 GenesisConfig로 변환
 	genesisConfig, err := convertConfigTxToGenesisConfig(&configTx, configTxPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to convert configtx to genesis config: %w", err)
+		return nil, errors.Wrap(err, "failed to convert configtx to genesis config")
 	}
 
 	logger.Infof("Successfully loaded configuration from %s", configTxPath)
@@ -713,7 +714,7 @@ func convertConfigTxToGenesisConfig(configTx *ConfigTxYAML, configTxPath string)
 	// 현재 작업 디렉토리 가져오기 (프로젝트 루트)
 	workingDir, err := os.Getwd()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get current working directory: %w", err)
+		return nil, errors.Wrap(err, "failed to get current working directory")
 	}
 
 	for _, org := range configTx.Organizations {
@@ -745,7 +746,7 @@ func convertConfigTxToGenesisConfig(configTx *ConfigTxYAML, configTxPath string)
 	// BatchSize 변환
 	batchSize, err := convertBatchSizeFromYAML(configTx.Orderer.BatchSize)
 	if err != nil {
-		return nil, fmt.Errorf("failed to convert batch size: %w", err)
+		return nil, errors.Wrap(err, "failed to convert batch size")
 	}
 
 	// BatchTimeout 처리
@@ -774,7 +775,7 @@ func convertConfigTxToGenesisConfig(configTx *ConfigTxYAML, configTxPath string)
 
 	// 검증
 	if err := validateGenesisConfig(genesisConfig); err != nil {
-		return nil, fmt.Errorf("generated genesis config is invalid: %w", err)
+		return nil, errors.Wrap(err, "generated genesis config is invalid")
 	}
 
 	return genesisConfig, nil
@@ -843,12 +844,12 @@ func parseImplicitMetaRule(rule string) *ImplicitMetaRule {
 func convertBatchSizeFromYAML(yamlBatchSize BatchSizeYAML) (*BatchSizeConfig, error) {
 	absoluteMaxBytes, err := parseBatchSizeBytes(yamlBatchSize.AbsoluteMaxBytes)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse absolute max bytes: %w", err)
+		return nil, errors.Wrap(err, "failed to parse absolute max bytes")
 	}
 
 	preferredMaxBytes, err := parseBatchSizeBytes(yamlBatchSize.PreferredMaxBytes)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse preferred max bytes: %w", err)
+		return nil, errors.Wrap(err, "failed to parse preferred max bytes")
 	}
 
 	return &BatchSizeConfig{
@@ -861,11 +862,8 @@ func convertBatchSizeFromYAML(yamlBatchSize BatchSizeYAML) (*BatchSizeConfig, er
 // parseBatchSizeBytes 크기 문자열을 바이트 수로 변환 ("128 MB" -> 134217728)
 func parseBatchSizeBytes(sizeStr string) (uint32, error) {
 	if sizeStr == "" {
-		return 0, fmt.Errorf("size string cannot be empty")
+		return 0, errors.New("size string cannot be empty")
 	}
-
-	// 공백 제거 및 대문자 변환
-	sizeStr = fmt.Sprintf("%s", sizeStr)
 
 	var value uint32
 	var unit string
@@ -875,7 +873,7 @@ func parseBatchSizeBytes(sizeStr string) (uint32, error) {
 	if err != nil || n != 2 {
 		// 단위 없이 숫자만 있는 경우
 		if n, err := fmt.Sscanf(sizeStr, "%d", &value); err != nil || n != 1 {
-			return 0, fmt.Errorf("failed to parse size: %s", sizeStr)
+			return 0, errors.Errorf("failed to parse size: %s", sizeStr)
 		}
 		return value, nil
 	}
@@ -889,6 +887,6 @@ func parseBatchSizeBytes(sizeStr string) (uint32, error) {
 	case "GB":
 		return value * 1024 * 1024 * 1024, nil
 	default:
-		return 0, fmt.Errorf("unsupported size unit: %s", unit)
+		return 0, errors.Errorf("unsupported size unit: %s", unit)
 	}
 }

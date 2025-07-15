@@ -11,6 +11,7 @@ import (
 
 	"github.com/ddr4869/minifab/common/logger"
 	"github.com/ddr4869/minifab/common/msp"
+	"github.com/pkg/errors"
 )
 
 // ChannelConfig 채널 구성 정보
@@ -109,21 +110,22 @@ func (cm *ChannelManager) saveChannel(channel *Channel) error {
 	// 채널 정보 저장 디렉토리 생성
 	channelDir := "channels"
 	if err := os.MkdirAll(channelDir, 0755); err != nil {
-		return fmt.Errorf("failed to create channel directory: %v", err)
+		return errors.Wrap(err, "failed to create channel directory")
 	}
 
 	// 채널 정보 직렬화
 	data, err := json.MarshalIndent(channel, "", "  ")
 	if err != nil {
-		return fmt.Errorf("failed to marshal channel data: %v", err)
+		return errors.Wrap(err, "failed to marshal channel data")
 	}
 
 	// 채널 정보 파일 저장
 	channelFile := filepath.Join(channelDir, channel.Name+".json")
 	if err := os.WriteFile(channelFile, data, 0644); err != nil {
-		return fmt.Errorf("failed to write channel file: %v", err)
+		return errors.Wrap(err, "failed to write channel file")
 	}
 
+	logger.Infof("Channel %s saved to %s", channel.Name, channelFile)
 	return nil
 }
 
@@ -152,7 +154,7 @@ func (cm *ChannelManager) CreateGenesisBlock(config *ChannelConfig) (*ChannelGen
 	// 채널 구성 정보를 JSON으로 직렬화
 	configBytes, err := json.Marshal(config)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal channel config: %v", err)
+		return nil, errors.Wrap(err, "failed to marshal channel config")
 	}
 
 	// 이전 해시 계산 (제네시스 블록이므로 빈 바이트 배열)
@@ -176,19 +178,19 @@ func (cm *ChannelManager) CreateChannel(channelID string, consortium string, ord
 
 	// 이미 존재하는 채널인지 확인
 	if _, exists := cm.channels[channelID]; exists {
-		return fmt.Errorf("channel %s already exists", channelID)
+		return errors.Errorf("channel %s already exists", channelID)
 	}
 
 	// 채널 구성 정보 생성
 	config, err := cm.CreateChannelConfig(channelID, consortium, ordererAddress)
 	if err != nil {
-		return fmt.Errorf("failed to create channel config: %v", err)
+		return errors.Wrap(err, "failed to create channel config")
 	}
 
 	// 제네시스 블록 생성
 	genesisBlock, err := cm.CreateGenesisBlock(config)
 	if err != nil {
-		return fmt.Errorf("failed to create genesis block: %v", err)
+		return errors.Wrap(err, "failed to create genesis block")
 	}
 
 	// MSP 설정 생성
@@ -221,9 +223,10 @@ func (cm *ChannelManager) CreateChannel(channelID string, consortium string, ord
 	if err := cm.saveChannel(channel); err != nil {
 		// 저장 실패 시 메모리에서도 제거
 		delete(cm.channels, channelID)
-		return fmt.Errorf("failed to save channel: %v", err)
+		return errors.Wrap(err, "failed to save channel")
 	}
 
+	logger.Infof("Channel %s created successfully", channelID)
 	return nil
 }
 
@@ -234,7 +237,7 @@ func (cm *ChannelManager) GetChannel(channelID string) (*Channel, error) {
 
 	channel, exists := cm.channels[channelID]
 	if !exists {
-		return nil, fmt.Errorf("channel %s not found", channelID)
+		return nil, errors.Errorf("channel %s not found", channelID)
 	}
 
 	return channel, nil

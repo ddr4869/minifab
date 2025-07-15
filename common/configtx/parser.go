@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
 )
 
@@ -77,17 +78,17 @@ type Consortium struct {
 // ParseConfigTx parses a configtx.yaml file
 func ParseConfigTx(filePath string) (*ConfigTx, error) {
 	if filePath == "" {
-		return nil, fmt.Errorf("file path cannot be empty")
+		return nil, errors.New("file path cannot be empty")
 	}
 
 	data, err := os.ReadFile(filePath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read configtx file: %w", err)
+		return nil, errors.Wrap(err, "failed to read configtx file")
 	}
 
 	var configTx ConfigTx
 	if err := yaml.Unmarshal(data, &configTx); err != nil {
-		return nil, fmt.Errorf("failed to parse configtx YAML: %w", err)
+		return nil, errors.Wrap(err, "failed to parse configtx YAML")
 	}
 
 	return &configTx, nil
@@ -124,7 +125,7 @@ func (c *ConfigTx) GetPeerOrganizations() []Organization {
 // ParseBatchSizeBytes converts batch size string to bytes
 func ParseBatchSizeBytes(sizeStr string) (uint32, error) {
 	if sizeStr == "" {
-		return 0, fmt.Errorf("size string cannot be empty")
+		return 0, errors.New("size string cannot be empty")
 	}
 
 	// Handle common size suffixes
@@ -149,7 +150,7 @@ func ParseBatchSizeBytes(sizeStr string) (uint32, error) {
 	// Try to parse the numeric part
 	var numValue uint32
 	if _, err := fmt.Sscanf(size, "%d", &numValue); err != nil {
-		return 0, fmt.Errorf("failed to parse size value: %w", err)
+		return 0, errors.Wrap(err, "failed to parse size value")
 	}
 
 	return numValue * multiplier, nil
@@ -162,7 +163,7 @@ func (c *ConfigTx) ConvertToGenesisConfig() (*GenesisConfig, error) {
 	peerOrgs := c.GetPeerOrganizations()
 
 	if len(ordererOrgs) == 0 {
-		return nil, fmt.Errorf("no orderer organizations found in configtx")
+		return nil, errors.New("no orderer organizations found in configtx")
 	}
 
 	// Convert orderer organizations
@@ -194,7 +195,7 @@ func (c *ConfigTx) ConvertToGenesisConfig() (*GenesisConfig, error) {
 	// Parse batch size
 	batchSize, err := c.parseBatchSizeConfig()
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse batch size: %w", err)
+		return nil, errors.Wrap(err, "failed to parse batch size")
 	}
 
 	// Create genesis config
@@ -220,12 +221,12 @@ func (c *ConfigTx) ConvertToGenesisConfig() (*GenesisConfig, error) {
 func (c *ConfigTx) parseBatchSizeConfig() (*BatchSizeConfig, error) {
 	absoluteMaxBytes, err := ParseBatchSizeBytes(c.Orderer.BatchSize.AbsoluteMaxBytes)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse absolute max bytes: %w", err)
+		return nil, errors.Wrap(err, "failed to parse absolute max bytes")
 	}
 
 	preferredMaxBytes, err := ParseBatchSizeBytes(c.Orderer.BatchSize.PreferredMaxBytes)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse preferred max bytes: %w", err)
+		return nil, errors.Wrap(err, "failed to parse preferred max bytes")
 	}
 
 	return &BatchSizeConfig{

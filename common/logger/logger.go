@@ -1,8 +1,10 @@
 package logger
 
 import (
+	"fmt"
 	"sync"
 
+	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -251,4 +253,174 @@ func Sync() error {
 		return Logger.Sync()
 	}
 	return nil
+}
+
+// ErrorAndReturn logs an error message and returns a new error with the same message
+func ErrorAndReturn(msg string, args ...any) error {
+	logger := GetLogger()
+
+	// Create the formatted message
+	var formattedMsg string
+	if len(args) > 0 {
+		formattedMsg = fmt.Sprintf(msg, args...)
+	} else {
+		formattedMsg = msg
+	}
+
+	// Log the error
+	logger.Error(formattedMsg)
+
+	// Return the error
+	return errors.New(formattedMsg)
+}
+
+// ErrorfAndReturn logs a formatted error message and returns a new error with the same message
+func ErrorfAndReturn(template string, args ...any) error {
+	logger := GetLogger()
+
+	// Create the formatted message
+	formattedMsg := fmt.Sprintf(template, args...)
+
+	// Log the error
+	logger.Error(formattedMsg)
+
+	// Return the error
+	return errors.New(formattedMsg)
+}
+
+// WrapError logs an error with additional context and returns a wrapped error
+func WrapError(err error, msg string, args ...any) error {
+	if err == nil {
+		return nil
+	}
+
+	logger := GetLogger()
+
+	// Create the formatted context message
+	var contextMsg string
+	if len(args) > 0 {
+		contextMsg = fmt.Sprintf(msg, args...)
+	} else {
+		contextMsg = msg
+	}
+
+	// Log with structured fields including the original error
+	logger.With(
+		"error", err.Error(),
+		"context", contextMsg,
+	).Error("Error occurred with context")
+
+	// Return wrapped error using pkg/errors
+	return errors.Wrap(err, contextMsg)
+}
+
+// WrapErrorf logs an error with formatted additional context and returns a wrapped error
+func WrapErrorf(err error, template string, args ...any) error {
+	if err == nil {
+		return nil
+	}
+
+	logger := GetLogger()
+
+	// Create the formatted context message
+	contextMsg := fmt.Sprintf(template, args...)
+
+	// Log with structured fields including the original error
+	logger.With(
+		"error", err.Error(),
+		"context", contextMsg,
+	).Error("Error occurred with context")
+
+	// Return wrapped error using pkg/errors
+	return errors.Wrap(err, contextMsg)
+}
+
+// ErrorWithFields logs an error with structured fields and returns the error
+func ErrorWithFields(msg string, fields map[string]any, args ...any) error {
+	logger := GetLogger()
+
+	// Create the formatted message
+	var formattedMsg string
+	if len(args) > 0 {
+		formattedMsg = fmt.Sprintf(msg, args...)
+	} else {
+		formattedMsg = msg
+	}
+
+	// Convert fields map to key-value pairs for zap
+	var zapFields []any
+	for key, value := range fields {
+		zapFields = append(zapFields, key, value)
+	}
+
+	// Log with structured fields
+	logger.With(zapFields...).Error(formattedMsg)
+
+	// Return the error
+	return errors.New(formattedMsg)
+}
+
+// WarnAndReturn logs a warning message and returns a new error with the same message
+func WarnAndReturn(msg string, args ...any) error {
+	logger := GetLogger()
+
+	// Create the formatted message
+	var formattedMsg string
+	if len(args) > 0 {
+		formattedMsg = fmt.Sprintf(msg, args...)
+	} else {
+		formattedMsg = msg
+	}
+
+	// Log the warning
+	logger.Warn(formattedMsg)
+
+	// Return the error
+	return errors.New(formattedMsg)
+}
+
+// LogIfError logs an error if it's not nil and returns the same error
+func LogIfError(err error, msg string, args ...any) error {
+	if err == nil {
+		return nil
+	}
+
+	logger := GetLogger()
+
+	// Create the formatted context message
+	var contextMsg string
+	if len(args) > 0 {
+		contextMsg = fmt.Sprintf(msg, args...)
+	} else {
+		contextMsg = msg
+	}
+
+	// Log with structured fields
+	logger.With(
+		"error", err.Error(),
+	).Error(contextMsg)
+
+	return err
+}
+
+// MustNotError logs a fatal error and exits if err is not nil
+func MustNotError(err error, msg string, args ...any) {
+	if err == nil {
+		return
+	}
+
+	logger := GetLogger()
+
+	// Create the formatted context message
+	var contextMsg string
+	if len(args) > 0 {
+		contextMsg = fmt.Sprintf(msg, args...)
+	} else {
+		contextMsg = msg
+	}
+
+	// Log fatal error with structured fields
+	logger.With(
+		"error", err.Error(),
+	).Fatal(contextMsg)
 }

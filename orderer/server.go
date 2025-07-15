@@ -8,12 +8,14 @@ import (
 
 	"github.com/ddr4869/minifab/common/logger"
 	pb "github.com/ddr4869/minifab/common/proto"
+	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 )
 
 type OrdererServer struct {
 	pb.UnimplementedOrdererServiceServer
 	orderer *Orderer
+	server  *grpc.Server
 	mutex   sync.RWMutex
 }
 
@@ -43,21 +45,25 @@ func (s *OrdererServer) SubmitTransaction(ctx context.Context, req *pb.Transacti
 }
 
 func (s *OrdererServer) GetBlock(ctx context.Context, req *pb.BlockRequest) (*pb.Block, error) {
-	s.mutex.RLock()
-	defer s.mutex.RUnlock()
+	logger.Infof("GetBlock request for block %d on channel %s", req.BlockNumber, req.ChannelId)
 
-	// 요청된 블록 번호에 해당하는 블록 반환
-	if int(req.BlockNumber) >= len(s.orderer.blocks) {
-		return nil, fmt.Errorf("block %d not found", req.BlockNumber)
+	// Get block from orderer
+	block, err := s.orderer.GetBlock(req.BlockNumber)
+	if err != nil {
+		logger.Errorf("Failed to get block %d: %v", req.BlockNumber, err)
+		return nil, errors.Errorf("block %d not found", req.BlockNumber)
 	}
 
-	block := s.orderer.blocks[req.BlockNumber]
-	return &pb.Block{
+	// Convert to protobuf format
+	pbBlock := &pb.Block{
 		Number:       block.Number,
 		PreviousHash: block.PreviousHash,
 		Data:         block.Data,
 		Timestamp:    block.Timestamp.Unix(),
-	}, nil
+	}
+
+	logger.Infof("Successfully retrieved block %d", req.BlockNumber)
+	return pbBlock, nil
 }
 
 func (s *OrdererServer) CreateChannel(ctx context.Context, req *pb.ChannelRequest) (*pb.ChannelResponse, error) {
@@ -92,44 +98,42 @@ func (s *OrdererServer) CreateChannel(ctx context.Context, req *pb.ChannelReques
 func (s *OrdererServer) Start(address string) error {
 	lis, err := net.Listen("tcp", address)
 	if err != nil {
-		return fmt.Errorf("failed to listen: %v", err)
+		return errors.Wrap(err, "failed to listen")
 	}
 
-	server := grpc.NewServer()
-	pb.RegisterOrdererServiceServer(server, s)
-
 	logger.Infof("Orderer server listening on %s", address)
-	return server.Serve(lis)
+
+	s.server = grpc.NewServer()
+	pb.RegisterOrdererServiceServer(s.server, s)
+
+	logger.Info("Orderer server started successfully")
+	return s.server.Serve(lis)
 }
 
 // StartWithContext starts the server with context support for graceful shutdown
 func (s *OrdererServer) StartWithContext(ctx context.Context, address string) error {
 	lis, err := net.Listen("tcp", address)
 	if err != nil {
-		return fmt.Errorf("failed to listen: %v", err)
+		return errors.Wrap(err, "failed to listen")
 	}
 
-	server := grpc.NewServer()
-	pb.RegisterOrdererServiceServer(server, s)
+	logger.Infof("Orderer server listening on %s", address)
 
-	// Channel to capture server errors
-	errChan := make(chan error, 1)
+	s.server = grpc.NewServer()
+	pb.RegisterOrdererServiceServer(s.server, s)
 
 	// Start server in goroutine
 	go func() {
-		logger.Infof("Orderer server listening on %s", address)
-		if err := server.Serve(lis); err != nil {
-			errChan <- err
+		if err := s.server.Serve(lis); err != nil {
+			logger.Errorf("Server error: %v", err)
 		}
 	}()
 
-	// Wait for context cancellation or server error
-	select {
-	case <-ctx.Done():
-		logger.Info("Shutting down orderer server...")
-		server.GracefulStop()
-		return nil
-	case err := <-errChan:
-		return err
-	}
+	// Wait for context cancellation
+	<-ctx.Done()
+	logger.Info("Shutting down orderer server...")
+	s.server.GracefulStop()
+	logger.Info("Orderer server shut down complete")
+
+	return nil
 }

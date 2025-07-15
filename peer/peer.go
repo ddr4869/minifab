@@ -7,6 +7,7 @@ import (
 
 	"github.com/ddr4869/minifab/common/logger"
 	"github.com/ddr4869/minifab/common/msp"
+	"github.com/pkg/errors"
 )
 
 type Transaction struct {
@@ -114,7 +115,7 @@ func (p *Peer) JoinChannel(channelName string) error {
 
 	channel, err := p.channelManager.GetChannel(channelName)
 	if err != nil {
-		return fmt.Errorf("failed to get channel: %v", err)
+		return errors.Wrap(err, "failed to get channel")
 	}
 
 	// 채널용 MSP 생성
@@ -138,7 +139,7 @@ func (p *Peer) SubmitTransaction(channelID string, payload []byte) (*Transaction
 
 	channel, err := p.channelManager.GetChannel(channelID)
 	if err != nil {
-		return nil, fmt.Errorf("channel %s not found", channelID)
+		return nil, errors.Errorf("channel %s not found", channelID)
 	}
 
 	// 임시 Identity와 서명 생성 (실제로는 인증서와 개인키 사용)
@@ -164,7 +165,7 @@ func (p *Peer) SubmitTransaction(channelID string, payload []byte) (*Transaction
 func (p *Peer) ValidateTransaction(tx *Transaction) error {
 	channel, err := p.channelManager.GetChannel(tx.ChannelID)
 	if err != nil {
-		return fmt.Errorf("channel %s not found", tx.ChannelID)
+		return errors.Errorf("channel %s not found", tx.ChannelID)
 	}
 
 	fmt.Println("channel", channel)
@@ -172,17 +173,17 @@ func (p *Peer) ValidateTransaction(tx *Transaction) error {
 	identity, err := channel.MSP.DeserializeIdentity(tx.Identity)
 	fmt.Println("identity", identity)
 	if err != nil {
-		return fmt.Errorf("failed to deserialize identity: %v", err)
+		return errors.Errorf("failed to deserialize identity: %v", err)
 	}
 
 	// Identity 검증
 	if err := channel.MSP.ValidateIdentity(identity); err != nil {
-		return fmt.Errorf("invalid identity: %v", err)
+		return errors.Errorf("invalid identity: %v", err)
 	}
 
 	// 서명 검증
 	if err := identity.Verify(tx.Payload, tx.Signature); err != nil {
-		return fmt.Errorf("signature verification failed: %v", err)
+		return errors.Errorf("signature verification failed: %v", err)
 	}
 
 	return nil

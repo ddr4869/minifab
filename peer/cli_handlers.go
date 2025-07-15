@@ -1,9 +1,8 @@
 package peer
 
 import (
-	"fmt"
-
 	"github.com/ddr4869/minifab/common/logger"
+	"github.com/pkg/errors"
 )
 
 // CLIHandlers CLI 명령어 핸들러들을 관리하는 구조체
@@ -24,24 +23,16 @@ func NewCLIHandlers(peer *Peer, ordererClient *OrdererClient) *CLIHandlers {
 func (h *CLIHandlers) HandleChannelCreate(channelName string, ordererAddress string) error {
 	// 채널 생성 (새로운 로직 사용)
 	if err := h.peer.GetChannelManager().CreateChannel(channelName, "SampleConsortium", ordererAddress); err != nil {
-		return fmt.Errorf("failed to create channel: %v", err)
+		return errors.Wrap(err, "failed to create channel")
 	}
 	logger.Infof("Channel %s created successfully", channelName)
-
-	// Orderer에 채널 생성 알림 (실패해도 계속 진행)
-	if err := h.ordererClient.CreateChannel(channelName); err != nil {
-		logger.Warnf("Failed to notify orderer about channel creation: %v", err)
-	} else {
-		logger.Infof("Orderer notified about channel %s creation", channelName)
-	}
-
 	return nil
 }
 
 // HandleChannelJoin 채널 참여 명령어 처리
 func (h *CLIHandlers) HandleChannelJoin(channelName string) error {
 	if err := h.peer.JoinChannel(channelName); err != nil {
-		return fmt.Errorf("failed to join channel: %v", err)
+		return errors.Wrap(err, "failed to join channel")
 	}
 	logger.Infof("Successfully joined channel %s", channelName)
 	return nil
@@ -61,27 +52,19 @@ func (h *CLIHandlers) HandleChannelList() error {
 	return nil
 }
 
-// HandleTransaction 트랜잭션 제출 명령어 처리
+// HandleTransaction 트랜잭션 처리 명령어
 func (h *CLIHandlers) HandleTransaction(channelName string, payload []byte) error {
 	// 트랜잭션 생성 및 제출
 	tx, err := h.peer.SubmitTransaction(channelName, payload)
 	if err != nil {
-		return fmt.Errorf("failed to submit transaction: %v", err)
+		return errors.Wrap(err, "failed to submit transaction")
 	}
 	logger.Infof("Transaction submitted successfully: %s", tx.ID)
-	logger.Infof("Transaction identity: %s", tx.Identity)
-
-	// 트랜잭션 검증
-	if err := h.peer.ValidateTransaction(tx); err != nil {
-		logger.Warnf("Transaction validation failed: %v", err)
-		return err
-	}
 
 	// Orderer에 트랜잭션 제출
 	if err := h.ordererClient.SubmitTransaction(tx); err != nil {
-		return fmt.Errorf("failed to submit transaction to orderer: %v", err)
+		return errors.Wrap(err, "failed to submit transaction to orderer")
 	}
 
-	logger.Infof("Transaction submitted to orderer successfully: %s", tx.ID)
 	return nil
 }

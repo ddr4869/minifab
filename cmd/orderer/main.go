@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -10,6 +9,7 @@ import (
 
 	"github.com/ddr4869/minifab/common/logger"
 	"github.com/ddr4869/minifab/orderer"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
@@ -148,20 +148,20 @@ func runBootstrap(cmd *cobra.Command, args []string) {
 // validateOrdererParams validates orderer startup parameters
 func validateOrdererParams() error {
 	if address == "" {
-		return fmt.Errorf("orderer address cannot be empty")
+		return errors.New("orderer address cannot be empty")
 	}
 
 	if mspID == "" {
-		return fmt.Errorf("MSP ID cannot be empty")
+		return errors.New("MSP ID cannot be empty")
 	}
 
 	if mspPath == "" {
-		return fmt.Errorf("MSP directory path cannot be empty")
+		return errors.New("MSP directory path cannot be empty")
 	}
 
 	// Check if MSP directory exists
 	if _, err := os.Stat(mspPath); os.IsNotExist(err) {
-		return fmt.Errorf("MSP directory does not exist: %s", mspPath)
+		return errors.Errorf("MSP directory does not exist: %s", mspPath)
 	}
 
 	return nil

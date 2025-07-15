@@ -5,9 +5,10 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"fmt"
 	"math/big"
 	"time"
+
+	"github.com/pkg/errors"
 )
 
 // MSP 인터페이스 정의
@@ -171,7 +172,7 @@ func NewFabricMSP() *FabricMSP {
 // Setup MSP 설정
 func (msp *FabricMSP) Setup(config *MSPConfig) error {
 	if config == nil {
-		return fmt.Errorf("MSP config cannot be nil")
+		return errors.New("MSP config cannot be nil")
 	}
 
 	msp.name = config.Name
@@ -196,7 +197,7 @@ func (msp *FabricMSP) GetIdentifier() string {
 // ValidateIdentity Identity 검증
 func (msp *FabricMSP) ValidateIdentity(identity Identity) error {
 	if identity == nil {
-		return fmt.Errorf("identity cannot be nil")
+		return errors.New("identity cannot be nil")
 	}
 	return identity.Validate()
 }
@@ -230,10 +231,10 @@ func (msp *FabricMSP) DeserializeIdentity(serializedIdentity []byte) (Identity, 
 // IsWellFormed Identity가 올바른 형식인지 확인
 func (msp *FabricMSP) IsWellFormed(identity *SerializedIdentity) error {
 	if identity == nil {
-		return fmt.Errorf("identity cannot be nil")
+		return errors.New("identity cannot be nil")
 	}
 	if identity.Mspid != msp.name {
-		return fmt.Errorf("identity MSP ID does not match")
+		return errors.New("identity MSP ID does not match")
 	}
 	return nil
 }

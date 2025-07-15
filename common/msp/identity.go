@@ -5,6 +5,8 @@ import (
 	"crypto/x509"
 	"fmt"
 	"time"
+
+	"github.com/pkg/errors"
 )
 
 // identity MSP Identity 구현
@@ -28,18 +30,18 @@ func (id *identity) GetMSPIdentifier() string {
 // Validate Identity 검증
 func (id *identity) Validate() error {
 	if id.msp == nil {
-		return fmt.Errorf("MSP cannot be nil")
+		return errors.New("MSP cannot be nil")
 	}
 	if id.id == nil {
-		return fmt.Errorf("identity identifier cannot be nil")
+		return errors.New("identity identifier cannot be nil")
 	}
 	if id.cert == nil {
-		return fmt.Errorf("certificate cannot be nil")
+		return errors.New("certificate cannot be nil")
 	}
 
 	// 인증서 유효성 검사
 	if id.cert.NotAfter.Before(time.Now()) {
-		return fmt.Errorf("certificate has expired")
+		return errors.New("certificate has expired")
 	}
 
 	return nil
@@ -63,7 +65,7 @@ func (id *identity) GetOrganizationalUnits() []*OUIdentifier {
 // Verify 서명 검증
 func (id *identity) Verify(msg []byte, sig []byte) error {
 	if id.pk == nil {
-		return fmt.Errorf("public key cannot be nil")
+		return errors.New("public key cannot be nil")
 	}
 
 	// 실제 구현에서는 서명 알고리즘에 따른 검증 수행
@@ -74,7 +76,7 @@ func (id *identity) Verify(msg []byte, sig []byte) error {
 // Serialize Identity 직렬화
 func (id *identity) Serialize() ([]byte, error) {
 	if id.cert == nil {
-		return nil, fmt.Errorf("certificate cannot be nil")
+		return nil, errors.New("certificate cannot be nil")
 	}
 
 	// 실제 구현에서는 protobuf를 사용하여 직렬화
@@ -90,7 +92,7 @@ func (id *identity) Serialize() ([]byte, error) {
 // SatisfiesPrincipal Principal 조건 확인
 func (id *identity) SatisfiesPrincipal(principal *MSPPrincipal) error {
 	if principal == nil {
-		return fmt.Errorf("principal cannot be nil")
+		return errors.New("principal cannot be nil")
 	}
 
 	switch principal.PrincipalClassification {
@@ -101,7 +103,7 @@ func (id *identity) SatisfiesPrincipal(principal *MSPPrincipal) error {
 	case MSPPrincipal_IDENTITY:
 		return id.satisfiesIdentity(principal.Principal)
 	default:
-		return fmt.Errorf("unsupported principal classification")
+		return errors.New("unsupported principal classification")
 	}
 }
 

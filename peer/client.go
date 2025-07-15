@@ -4,17 +4,20 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
+	"time"
 
-	"github.com/ddr4869/minifab/common/logger"
-	pb "github.com/ddr4869/minifab/common/proto"
+	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials/insecure"
+
+	"github.com/ddr4869/minifab/common/logger"
+	"github.com/ddr4869/minifab/common/proto"
 )
 
 type OrdererClient struct {
 	conn   *grpc.ClientConn
-	client pb.OrdererServiceClient
+	client proto.OrdererServiceClient
 }
 
 func NewOrdererClient(address string) (*OrdererClient, error) {
@@ -22,7 +25,7 @@ func NewOrdererClient(address string) (*OrdererClient, error) {
 
 	conn, err := grpc.NewClient(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to orderer: %v", err)
+		return nil, errors.Wrap(err, "failed to connect to orderer")
 	}
 
 	// 연결 상태 확인
@@ -33,7 +36,7 @@ func NewOrdererClient(address string) (*OrdererClient, error) {
 		logger.Infof("Connection to orderer at %s is %s", address, state.String())
 	}
 
-	client := pb.NewOrdererServiceClient(conn)
+	client := proto.NewOrdererServiceClient(conn)
 
 	return &OrdererClient{
 		conn:   conn,
@@ -42,18 +45,24 @@ func NewOrdererClient(address string) (*OrdererClient, error) {
 }
 
 func (oc *OrdererClient) SubmitTransaction(tx *Transaction) error {
-	// gRPC 요청 생성
-	req := &pb.Transaction{
+	if oc.client == nil {
+		return errors.New("client not connected")
+	}
+
+	// Convert Transaction to proto
+	protoTx := &proto.Transaction{
 		Id:        tx.ID,
 		ChannelId: tx.ChannelID,
 		Payload:   tx.Payload,
 		Timestamp: tx.Timestamp.Unix(),
 	}
 
-	// gRPC 호출
-	resp, err := oc.client.SubmitTransaction(context.Background(), req)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	resp, err := oc.client.SubmitTransaction(ctx, protoTx)
 	if err != nil {
-		return fmt.Errorf("failed to submit transaction: %v", err)
+		return errors.Wrap(err, "failed to submit transaction")
 	}
 
 	logger.Infof("Transaction submitted successfully: %s", resp.Message)
@@ -61,15 +70,21 @@ func (oc *OrdererClient) SubmitTransaction(tx *Transaction) error {
 }
 
 func (oc *OrdererClient) CreateChannel(channelName string) error {
+	if oc.client == nil {
+		return errors.New("client not connected")
+	}
+
 	// gRPC 요청 생성
-	req := &pb.ChannelRequest{
+	req := &proto.ChannelRequest{
 		ChannelName: channelName,
 	}
 
-	// gRPC 호출
-	resp, err := oc.client.CreateChannel(context.Background(), req)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	resp, err := oc.client.CreateChannel(ctx, req)
 	if err != nil {
-		return fmt.Errorf("failed to create channel: %v", err)
+		return errors.Wrap(err, "failed to create channel")
 	}
 
 	logger.Infof("Channel created successfully: %s", resp.Message)

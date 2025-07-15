@@ -3,10 +3,10 @@ package orderer
 import (
 	"crypto/sha256"
 	"encoding/json"
-	"fmt"
 	"time"
 
 	"github.com/ddr4869/minifab/common/msp"
+	"github.com/pkg/errors"
 )
 
 // Constants for genesis block configuration
@@ -204,11 +204,11 @@ type GenesisBlockGenerator struct {
 // NewGenesisBlockGenerator creates a new genesis block generator
 func NewGenesisBlockGenerator(config *GenesisConfig) (*GenesisBlockGenerator, error) {
 	if config == nil {
-		return nil, fmt.Errorf("genesis config cannot be nil")
+		return nil, errors.New("genesis config cannot be nil")
 	}
 
 	if err := validateGenesisConfig(config); err != nil {
-		return nil, fmt.Errorf("invalid genesis config: %w", err)
+		return nil, errors.Wrap(err, "invalid genesis config")
 	}
 
 	return &GenesisBlockGenerator{
@@ -219,48 +219,48 @@ func NewGenesisBlockGenerator(config *GenesisConfig) (*GenesisBlockGenerator, er
 // validateGenesisConfig validates the genesis configuration
 func validateGenesisConfig(config *GenesisConfig) error {
 	if config.NetworkName == "" {
-		return fmt.Errorf("network name cannot be empty")
+		return errors.New("network name cannot be empty")
 	}
 
 	if config.ConsortiumName == "" {
-		return fmt.Errorf("consortium name cannot be empty")
+		return errors.New("consortium name cannot be empty")
 	}
 
 	if len(config.OrdererOrgs) == 0 {
-		return fmt.Errorf("at least one orderer organization is required")
+		return errors.New("at least one orderer organization is required")
 	}
 
 	if config.SystemChannel == nil {
-		return fmt.Errorf("system channel configuration is required")
+		return errors.New("system channel configuration is required")
 	}
 
 	if config.BatchSize == nil {
-		return fmt.Errorf("batch size configuration is required")
+		return errors.New("batch size configuration is required")
 	}
 
 	// Validate batch size limits
 	if config.BatchSize.MaxMessageCount == 0 {
-		return fmt.Errorf("max message count must be greater than 0")
+		return errors.New("max message count must be greater than 0")
 	}
 
 	if config.BatchSize.AbsoluteMaxBytes == 0 {
-		return fmt.Errorf("absolute max bytes must be greater than 0")
+		return errors.New("absolute max bytes must be greater than 0")
 	}
 
 	if config.BatchSize.PreferredMaxBytes > config.BatchSize.AbsoluteMaxBytes {
-		return fmt.Errorf("preferred max bytes cannot exceed absolute max bytes")
+		return errors.New("preferred max bytes cannot exceed absolute max bytes")
 	}
 
 	// Validate organizations
 	for i, org := range config.OrdererOrgs {
 		if err := validateOrganizationConfig(org); err != nil {
-			return fmt.Errorf("invalid orderer org at index %d: %w", i, err)
+			return errors.Wrapf(err, "invalid orderer org at index %d", i)
 		}
 	}
 
 	for i, org := range config.PeerOrgs {
 		if err := validateOrganizationConfig(org); err != nil {
-			return fmt.Errorf("invalid peer org at index %d: %w", i, err)
+			return errors.Wrapf(err, "invalid peer org at index %d", i)
 		}
 	}
 
@@ -270,19 +270,19 @@ func validateGenesisConfig(config *GenesisConfig) error {
 // validateOrganizationConfig validates organization configuration
 func validateOrganizationConfig(org *OrganizationConfig) error {
 	if org == nil {
-		return fmt.Errorf("organization config cannot be nil")
+		return errors.New("organization config cannot be nil")
 	}
 
 	if org.Name == "" {
-		return fmt.Errorf("organization name cannot be empty")
+		return errors.New("organization name cannot be empty")
 	}
 
 	if org.ID == "" {
-		return fmt.Errorf("organization ID cannot be empty")
+		return errors.New("organization ID cannot be empty")
 	}
 
 	if org.MSPDir == "" {
-		return fmt.Errorf("MSP directory cannot be empty")
+		return errors.New("MSP directory cannot be empty")
 	}
 
 	return nil
@@ -292,14 +292,14 @@ func validateOrganizationConfig(org *OrganizationConfig) error {
 func (g *GenesisBlockGenerator) GenerateGenesisBlock() (*GenesisBlock, error) {
 	configTx, err := g.createSystemChannelConfigTx()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create system channel config tx: %w", err)
+		return nil, errors.Wrap(err, "failed to create system channel config tx")
 	}
 
 	blockData := &BlockData{ConfigTx: configTx}
 
 	header, err := g.createGenesisBlockHeader(blockData)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create genesis block header: %w", err)
+		return nil, errors.Wrap(err, "failed to create genesis block header")
 	}
 
 	return &GenesisBlock{
@@ -312,7 +312,7 @@ func (g *GenesisBlockGenerator) GenerateGenesisBlock() (*GenesisBlock, error) {
 func (g *GenesisBlockGenerator) createGenesisBlockHeader(blockData *BlockData) (*BlockHeader, error) {
 	dataBytes, err := json.Marshal(blockData)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal block data: %w", err)
+		return nil, errors.Wrap(err, "failed to marshal block data")
 	}
 
 	dataHash := sha256.Sum256(dataBytes)
@@ -330,7 +330,7 @@ func (g *GenesisBlockGenerator) createSystemChannelConfigTx() (*ConfigTransactio
 	// Create channel configuration group
 	channelGroup, err := g.createChannelConfigGroup()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create channel config group: %w", err)
+		return nil, errors.Wrap(err, "failed to create channel config group")
 	}
 
 	// Create configuration update
@@ -357,13 +357,13 @@ func (g *GenesisBlockGenerator) createChannelConfigGroup() (*ConfigGroup, error)
 	// Create orderer configuration group
 	ordererGroup, err := g.createOrdererConfigGroup()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create orderer config group: %w", err)
+		return nil, errors.Wrap(err, "failed to create orderer config group")
 	}
 
 	// Create consortiums configuration group
 	consortiumsGroup, err := g.createConsortiumsConfigGroup()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create consortiums config group: %w", err)
+		return nil, errors.Wrap(err, "failed to create consortiums config group")
 	}
 
 	// Create channel configuration group
@@ -408,7 +408,7 @@ func (g *GenesisBlockGenerator) createOrdererConfigGroup() (*ConfigGroup, error)
 	for _, org := range g.config.OrdererOrgs {
 		orgGroup, err := g.createOrgConfigGroup(org)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create orderer org %s config group: %w", org.Name, err)
+			return nil, errors.Wrapf(err, "failed to create orderer org %s config group", org.Name)
 		}
 		ordererOrgs[org.Name] = orgGroup
 	}
@@ -477,7 +477,7 @@ func (g *GenesisBlockGenerator) createConsortiumsConfigGroup() (*ConfigGroup, er
 	for _, org := range g.config.PeerOrgs {
 		orgGroup, err := g.createOrgConfigGroup(org)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create peer org %s config group: %w", org.Name, err)
+			return nil, errors.Wrapf(err, "failed to create peer org %s config group", org.Name)
 		}
 		consortium.Groups[org.Name] = orgGroup
 	}
@@ -500,7 +500,7 @@ func (g *GenesisBlockGenerator) createOrgConfigGroup(org *OrganizationConfig) (*
 	// Create MSP configuration
 	mspConfig, err := g.createMSPConfig(org)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create MSP config for org %s: %w", org.Name, err)
+		return nil, errors.Wrapf(err, "failed to create MSP config for org %s", org.Name)
 	}
 
 	orgGroup := &ConfigGroup{
@@ -562,7 +562,7 @@ func (g *GenesisBlockGenerator) createMSPConfig(org *OrganizationConfig) (*msp.M
 	// Load CA certificates
 	caCerts, err := loader.LoadCACerts()
 	if err != nil {
-		return nil, fmt.Errorf("failed to load CA certs for org %s: %w", org.Name, err)
+		return nil, errors.Wrapf(err, "failed to load CA certs for org %s", org.Name)
 	}
 
 	// Load TLS CA certificates (optional)
@@ -575,7 +575,7 @@ func (g *GenesisBlockGenerator) createMSPConfig(org *OrganizationConfig) (*msp.M
 
 	// Validate that we have at least one certificate
 	if len(caCerts) == 0 {
-		return nil, fmt.Errorf("no CA certificates found for org %s", org.Name)
+		return nil, errors.Errorf("no CA certificates found for org %s", org.Name)
 	}
 
 	mspConfig := &msp.MSPConfig{
