@@ -13,84 +13,45 @@
 #
 ################################################################################
 Organizations:
-
     - &OrdererOrg
-        Name: OrdererOrg
-        ID: OrdererMSP
-        MSPDir: crypto-config/ordererOrganizations/example.com/msp
-        Policies:
-            Readers:
-                Type: Signature
-                Rule: "OR('OrdererMSP.member')"
-            Writers:
-                Type: Signature
-                Rule: "OR('OrdererMSP.member')"
-            Admins:
-                Type: Signature
-                Rule: "OR('OrdererMSP.admin')"
+      Name: OrdererOrg
+      ID: OrdererMSP
+      MSPDir: ca/ca-client/orderer0/msp
+      Policies:
+          Readers:
+              Type: Signature
+              Rule: "OR('OrdererMSP.member')"
+          Writers:
+              Type: Signature
+              Rule: "OR('OrdererMSP.member')"
+          Admins:
+              Type: Signature
+              Rule: "OR('OrdererMSP.admin')"
 
-
-        OrdererEndpoints:
-            - orderer0.example.com:7050
-            - orderer1.example.com:7050
-            - orderer2.example.com:7050
+      OrdererEndpoints:
+          - 127.0.0.1:7050
 
     - &Org1
-        Name: Org1MSP
-        ID: Org1MSP
-        MSPDir: crypto-config/peerOrganizations/org1.example.com/msp
-        Policies:
-            Readers:
-                Type: Signature
-                Rule: "OR('Org1MSP.admin', 'Org1MSP.peer', 'Org1MSP.client', 'Org1MSP.member')"
-            Writers:
-                Type: Signature
-                Rule: "OR('Org1MSP.admin', 'Org1MSP.peer', 'Org1MSP.client', 'Org1MSP.member')" 
-            Admins:
-                Type: Signature
-                Rule: "OR('Org1MSP.admin', 'Org1MSP.peer', 'Org1MSP.client', 'Org1MSP.member')"
-            Endorsement:
-                Type: Signature
-                Rule: "OR('Org1MSP.admin', 'Org1MSP.peer', 'Org1MSP.client', 'Org1MSP.member')"
+      Name: Org1MSP
+      ID: Org1MSP
+      MSPDir: ca/ca-client/peer0/msp
+      Policies:
+          Readers:
+              Type: Signature
+              Rule: "OR('Org1MSP.admin', 'Org1MSP.peer', 'Org1MSP.client', 'Org1MSP.member')"
+          Writers:
+              Type: Signature
+              Rule: "OR('Org1MSP.admin', 'Org1MSP.peer', 'Org1MSP.client', 'Org1MSP.member')"
+          Admins:
+              Type: Signature
+              Rule: "OR('Org1MSP.admin', 'Org1MSP.peer', 'Org1MSP.client', 'Org1MSP.member')"
+          Endorsement:
+              Type: Signature
+              Rule: "OR('Org1MSP.admin', 'Org1MSP.peer', 'Org1MSP.client', 'Org1MSP.member')"
 
-
-        # leave this flag set to true.
-        AnchorPeers:
-            - Host: peer0.org1.example.com
-              Port: 7051
-            - Host: peer1.org1.example.com
-              Port: 7051
-            - Host: peer2.org1.example.com
-              Port: 7051
-
-################################################################################
-#
-#   SECTION: Capabilities
-#
-#   - This section defines the capabilities of fabric network. This is a new
-#   concept as of v1.1.0 and should not be utilized in mixed networks with
-#   v1.0.x peers and orderers.  Capabilities define features which must be
-#   present in a fabric binary for that binary to safely participate in the
-#   fabric network.  For instance, if a new MSP type is added, newer binaries
-#   might recognize and validate the signatures from this type, while older
-#   binaries without this support would be unable to validate those
-#   transactions.  This could lead to different versions of the fabric binaries
-#   having different world states.  Instead, defining a capability for a channel
-#   informs those binaries without this capability that they must cease
-#   processing transactions until they have been upgraded.  For v1.0.x if any
-#   capabilities are defined (including a map with all capabilities turned off)
-#   then the v1.0.x peer will deliberately crash.
-#
-################################################################################
-Capabilities:
-    Channel: &ChannelCapabilities
-        V2_0: true
-
-    Orderer: &OrdererCapabilities
-        V2_0: true
-
-    Application: &ApplicationCapabilities
-        V2_0: true
+      AnchorPeers:
+          - Host: 127.0.0.1
+            Port: 7051
 
 
 ################################################################################
@@ -102,7 +63,6 @@ Capabilities:
 #
 ################################################################################
 Application: &ApplicationDefaults
-
     Organizations:
 
     # Policies defines the set of policies at this level of the config tree
@@ -125,8 +85,6 @@ Application: &ApplicationDefaults
             Type: ImplicitMeta
             Rule: "MAJORITY Endorsement"
 
-    Capabilities:
-        <<: *ApplicationCapabilities
 ################################################################################
 #
 #   SECTION: Orderer
@@ -136,23 +94,7 @@ Application: &ApplicationDefaults
 #
 ################################################################################
 Orderer: &OrdererDefaults
-
-    OrdererType: etcdraft
-
-    EtcdRaft:
-        Consenters:
-        - Host: orderer0.example.com
-          Port: 7050
-          ClientTLSCert: crypto-config/ordererOrganizations/example.com/orderers/orderer0.example.com/tls/server.crt
-          ServerTLSCert: crypto-config/ordererOrganizations/example.com/orderers/orderer0.example.com/tls/server.crt
-        - Host: orderer1.example.com
-          Port: 7050
-          ClientTLSCert: crypto-config/ordererOrganizations/example.com/orderers/orderer1.example.com/tls/server.crt
-          ServerTLSCert: crypto-config/ordererOrganizations/example.com/orderers/orderer1.example.com/tls/server.crt
-        - Host: orderer2.example.com
-          Port: 7050
-          ClientTLSCert: crypto-config/ordererOrganizations/example.com/orderers/orderer2.example.com/tls/server.crt
-          ServerTLSCert: crypto-config/ordererOrganizations/example.com/orderers/orderer2.example.com/tls/server.crt
+    OrdererType: solo
 
     # Batch Timeout: The amount of time to wait before creating a batch
     BatchTimeout: 200ms
@@ -209,41 +151,5 @@ Channel: &ChannelDefaults
         Admins:
             Type: ImplicitMeta
             #Rule: "MAJORITY Admins"
-            Rule: "ANY Writers" 
+            Rule: "ANY Writers"
 
-    # Capabilities describes the channel level capabilities, see the
-    # dedicated Capabilities section elsewhere in this file for a full
-    # description
-    Capabilities:
-        <<: *ChannelCapabilities
-
-################################################################################
-#
-#   Profile
-#
-#   - Different configuration profiles may be encoded here to be specified
-#   as parameters to the configtxgen tool
-#
-################################################################################
-Profiles:
-    OrgsOrdererGenesis:
-        <<: *ChannelDefaults
-        Orderer:
-            <<: *OrdererDefaults
-            Organizations:
-                - *OrdererOrg
-            Capabilities:
-                <<: *OrdererCapabilities
-        Consortiums:
-            SampleConsortium:
-                Organizations:
-                    - *Org1
-    OrgsChannel0:
-        Consortium: SampleConsortium
-        <<: *ChannelDefaults
-        Application:
-            <<: *ApplicationDefaults
-            Organizations:
-                - *Org1
-            Capabilities:
-                <<: *ApplicationCapabilities

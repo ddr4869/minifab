@@ -5,11 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
 	"github.com/ddr4869/minifab/common/logger"
 	"github.com/ddr4869/minifab/common/msp"
+	"gopkg.in/yaml.v3"
 )
 
 // OrdererInterface defines the interface for orderer operations
@@ -601,4 +603,292 @@ func validateChannelName(channelName string) error {
 	}
 
 	return nil
+}
+
+// CreateGenesisConfigFromConfigTx configtx.yaml 파일에서 GenesisConfig 생성
+func CreateGenesisConfigFromConfigTx(configTxPath string) (*GenesisConfig, error) {
+	if configTxPath == "" {
+		return nil, fmt.Errorf("configtx path cannot be empty")
+	}
+
+	// configtx.yaml 파일 존재 확인
+	if _, err := os.Stat(configTxPath); os.IsNotExist(err) {
+		return nil, fmt.Errorf("configtx file does not exist: %s", configTxPath)
+	}
+
+	// configtx.yaml 파일 읽기
+	data, err := os.ReadFile(configTxPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read configtx file: %w", err)
+	}
+
+	// YAML 파싱
+	var configTx ConfigTxYAML
+	if err := yaml.Unmarshal(data, &configTx); err != nil {
+		return nil, fmt.Errorf("failed to parse configtx YAML: %w", err)
+	}
+
+	// ConfigTxYAML을 GenesisConfig로 변환
+	genesisConfig, err := convertConfigTxToGenesisConfig(&configTx, configTxPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert configtx to genesis config: %w", err)
+	}
+
+	logger.Infof("Successfully loaded configuration from %s", configTxPath)
+	logger.Infof("Network: %s, Consortium: %s", genesisConfig.NetworkName, genesisConfig.ConsortiumName)
+	logger.Infof("Orderer Organizations: %d, Peer Organizations: %d",
+		len(genesisConfig.OrdererOrgs), len(genesisConfig.PeerOrgs))
+
+	return genesisConfig, nil
+}
+
+// ConfigTxYAML configtx.yaml 파일 구조체 정의
+type ConfigTxYAML struct {
+	Organizations []OrganizationYAML `yaml:"Organizations"`
+	Application   ApplicationYAML    `yaml:"Application"`
+	Orderer       OrdererYAML        `yaml:"Orderer"`
+	Channel       ChannelYAML        `yaml:"Channel"`
+}
+
+// OrganizationYAML YAML의 Organization 구조체
+type OrganizationYAML struct {
+	Name             string                `yaml:"Name"`
+	ID               string                `yaml:"ID"`
+	MSPDir           string                `yaml:"MSPDir"`
+	Policies         map[string]PolicyYAML `yaml:"Policies"`
+	OrdererEndpoints []string              `yaml:"OrdererEndpoints,omitempty"`
+	AnchorPeers      []AnchorPeerYAML      `yaml:"AnchorPeers,omitempty"`
+}
+
+// AnchorPeerYAML YAML의 AnchorPeer 구조체
+type AnchorPeerYAML struct {
+	Host string `yaml:"Host"`
+	Port int    `yaml:"Port"`
+}
+
+// PolicyYAML YAML의 Policy 구조체
+type PolicyYAML struct {
+	Type string `yaml:"Type"`
+	Rule string `yaml:"Rule"`
+}
+
+// ApplicationYAML YAML의 Application 구조체
+type ApplicationYAML struct {
+	Organizations []interface{}         `yaml:"Organizations"`
+	Policies      map[string]PolicyYAML `yaml:"Policies"`
+}
+
+// OrdererYAML YAML의 Orderer 구조체
+type OrdererYAML struct {
+	OrdererType   string                `yaml:"OrdererType"`
+	BatchTimeout  string                `yaml:"BatchTimeout"`
+	BatchSize     BatchSizeYAML         `yaml:"BatchSize"`
+	Organizations []interface{}         `yaml:"Organizations"`
+	Policies      map[string]PolicyYAML `yaml:"Policies"`
+}
+
+// BatchSizeYAML YAML의 BatchSize 구조체
+type BatchSizeYAML struct {
+	MaxMessageCount   int    `yaml:"MaxMessageCount"`
+	AbsoluteMaxBytes  string `yaml:"AbsoluteMaxBytes"`
+	PreferredMaxBytes string `yaml:"PreferredMaxBytes"`
+}
+
+// ChannelYAML YAML의 Channel 구조체
+type ChannelYAML struct {
+	Policies map[string]PolicyYAML `yaml:"Policies"`
+}
+
+// convertConfigTxToGenesisConfig ConfigTxYAML을 GenesisConfig로 변환
+func convertConfigTxToGenesisConfig(configTx *ConfigTxYAML, configTxPath string) (*GenesisConfig, error) {
+	// 기본값 설정
+	networkName := DefaultNetworkName
+	consortiumName := DefaultConsortiumName
+	systemChannelName := DefaultSystemChannel
+
+	// Organization 분류
+	var ordererOrgs []*OrganizationConfig
+	var peerOrgs []*OrganizationConfig
+
+	// 현재 작업 디렉토리 가져오기 (프로젝트 루트)
+	workingDir, err := os.Getwd()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get current working directory: %w", err)
+	}
+
+	for _, org := range configTx.Organizations {
+		orgConfig := &OrganizationConfig{
+			Name:     org.Name,
+			ID:       org.ID,
+			MSPType:  MSPTypeBCCSP,
+			Policies: convertPoliciesFromYAML(org.Policies),
+		}
+
+		// MSPDir 경로 처리 - 상대 경로는 프로젝트 루트를 기준으로 함
+		if filepath.IsAbs(org.MSPDir) {
+			orgConfig.MSPDir = org.MSPDir
+		} else {
+			// 상대 경로는 프로젝트 루트(workingDir)를 기준으로 함
+			orgConfig.MSPDir = filepath.Join(workingDir, org.MSPDir)
+		}
+
+		// OrdererEndpoints가 있으면 orderer 조직
+		if len(org.OrdererEndpoints) > 0 {
+			ordererOrgs = append(ordererOrgs, orgConfig)
+		}
+		// AnchorPeers가 있으면 peer 조직
+		if len(org.AnchorPeers) > 0 {
+			peerOrgs = append(peerOrgs, orgConfig)
+		}
+	}
+
+	// BatchSize 변환
+	batchSize, err := convertBatchSizeFromYAML(configTx.Orderer.BatchSize)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert batch size: %w", err)
+	}
+
+	// BatchTimeout 처리
+	batchTimeout := configTx.Orderer.BatchTimeout
+	if batchTimeout == "" {
+		batchTimeout = DefaultBatchTimeout
+	}
+
+	// GenesisConfig 생성
+	genesisConfig := &GenesisConfig{
+		NetworkName:    networkName,
+		ConsortiumName: consortiumName,
+		OrdererOrgs:    ordererOrgs,
+		PeerOrgs:       peerOrgs,
+		SystemChannel: &SystemChannelConfig{
+			Name:         systemChannelName,
+			Consortium:   consortiumName,
+			Capabilities: map[string]bool{CapabilityV2_0: true},
+			Policies:     convertPoliciesFromYAML(configTx.Channel.Policies),
+		},
+		Capabilities: map[string]bool{CapabilityV2_0: true},
+		Policies:     convertPoliciesFromYAML(configTx.Channel.Policies),
+		BatchSize:    batchSize,
+		BatchTimeout: batchTimeout,
+	}
+
+	// 검증
+	if err := validateGenesisConfig(genesisConfig); err != nil {
+		return nil, fmt.Errorf("generated genesis config is invalid: %w", err)
+	}
+
+	return genesisConfig, nil
+}
+
+// convertPoliciesFromYAML YAML 정책을 GenesisConfig 정책으로 변환
+func convertPoliciesFromYAML(yamlPolicies map[string]PolicyYAML) map[string]*Policy {
+	if yamlPolicies == nil {
+		return make(map[string]*Policy)
+	}
+
+	policies := make(map[string]*Policy)
+	for name, yamlPolicy := range yamlPolicies {
+		policy := &Policy{
+			Type: yamlPolicy.Type,
+		}
+
+		// 정책 규칙 변환
+		if yamlPolicy.Type == PolicyTypeImplicitMeta {
+			// ImplicitMeta 정책 파싱 (예: "ANY Readers", "MAJORITY Admins")
+			rule := parseImplicitMetaRule(yamlPolicy.Rule)
+			policy.Rule = rule
+		} else if yamlPolicy.Type == PolicyTypeSignature {
+			// Signature 정책 파싱 (현재는 원본 규칙 문자열을 그대로 사용)
+			policy.Rule = yamlPolicy.Rule
+		} else {
+			// 기타 정책 타입
+			policy.Rule = yamlPolicy.Rule
+		}
+
+		policies[name] = policy
+	}
+
+	return policies
+}
+
+// parseImplicitMetaRule ImplicitMeta 정책 규칙 파싱
+func parseImplicitMetaRule(rule string) *ImplicitMetaRule {
+	// "ANY Readers", "MAJORITY Admins" 등의 형태를 파싱
+	parts := make([]string, 0, 2)
+	for _, part := range []string{"ANY", "MAJORITY", "ALL"} {
+		if len(rule) > len(part) && rule[:len(part)] == part {
+			parts = append(parts, part)
+			if len(rule) > len(part)+1 {
+				parts = append(parts, rule[len(part)+1:])
+			}
+			break
+		}
+	}
+
+	if len(parts) >= 2 {
+		return &ImplicitMetaRule{
+			Rule:      parts[0],
+			SubPolicy: parts[1],
+		}
+	}
+
+	// 파싱 실패 시 기본값
+	return &ImplicitMetaRule{
+		Rule:      PolicyRuleAny,
+		SubPolicy: "Readers",
+	}
+}
+
+// convertBatchSizeFromYAML YAML BatchSize를 GenesisConfig BatchSize로 변환
+func convertBatchSizeFromYAML(yamlBatchSize BatchSizeYAML) (*BatchSizeConfig, error) {
+	absoluteMaxBytes, err := parseBatchSizeBytes(yamlBatchSize.AbsoluteMaxBytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse absolute max bytes: %w", err)
+	}
+
+	preferredMaxBytes, err := parseBatchSizeBytes(yamlBatchSize.PreferredMaxBytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse preferred max bytes: %w", err)
+	}
+
+	return &BatchSizeConfig{
+		MaxMessageCount:   uint32(yamlBatchSize.MaxMessageCount),
+		AbsoluteMaxBytes:  absoluteMaxBytes,
+		PreferredMaxBytes: preferredMaxBytes,
+	}, nil
+}
+
+// parseBatchSizeBytes 크기 문자열을 바이트 수로 변환 ("128 MB" -> 134217728)
+func parseBatchSizeBytes(sizeStr string) (uint32, error) {
+	if sizeStr == "" {
+		return 0, fmt.Errorf("size string cannot be empty")
+	}
+
+	// 공백 제거 및 대문자 변환
+	sizeStr = fmt.Sprintf("%s", sizeStr)
+
+	var value uint32
+	var unit string
+
+	// 숫자와 단위 분리
+	n, err := fmt.Sscanf(sizeStr, "%d %s", &value, &unit)
+	if err != nil || n != 2 {
+		// 단위 없이 숫자만 있는 경우
+		if n, err := fmt.Sscanf(sizeStr, "%d", &value); err != nil || n != 1 {
+			return 0, fmt.Errorf("failed to parse size: %s", sizeStr)
+		}
+		return value, nil
+	}
+
+	// 단위에 따른 배수 적용
+	switch unit {
+	case "KB":
+		return value * 1024, nil
+	case "MB":
+		return value * 1024 * 1024, nil
+	case "GB":
+		return value * 1024 * 1024 * 1024, nil
+	default:
+		return 0, fmt.Errorf("unsupported size unit: %s", unit)
+	}
 }

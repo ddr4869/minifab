@@ -2,8 +2,8 @@
   "header": {
     "number": 0,
     "previous_hash": null,
-    "data_hash": "oq3Tn5jBsQRhWIMgZxwHWJ3Lu1hA7zPDvsgGvXOig8s=",
-    "timestamp": 1752566107
+    "data_hash": "qeY9xqB2Q6a+FaIF1Mc0Ey9HStfxItbdN+dwhP1/vPs=",
+    "timestamp": 1752571565
   },
   "data": {
     "config_tx": {
@@ -21,7 +21,7 @@
                   "SampleConsortium": {
                     "version": 0,
                     "groups": {
-                      "Org1": {
+                      "Org1MSP": {
                         "version": 0,
                         "groups": {},
                         "values": {
@@ -1145,16 +1145,16 @@
                   "BatchSize": {
                     "version": 0,
                     "value": {
-                      "max_message_count": 100,
-                      "absolute_max_bytes": 10485760,
-                      "preferred_max_bytes": 2097152
+                      "max_message_count": 300,
+                      "absolute_max_bytes": 134217728,
+                      "preferred_max_bytes": 134217728
                     },
                     "mod_policy": "Admins"
                   },
                   "BatchTimeout": {
                     "version": 0,
                     "value": {
-                      "timeout": "2s"
+                      "timeout": "200ms"
                     },
                     "mod_policy": "Admins"
                   },
@@ -1233,8 +1233,8 @@
               "Admins": {
                 "type": "ImplicitMeta",
                 "rule": {
-                  "rule": "MAJORITY",
-                  "sub_policy": "Admins"
+                  "rule": "ANY",
+                  "sub_policy": "Writers"
                 }
               },
               "Readers": {

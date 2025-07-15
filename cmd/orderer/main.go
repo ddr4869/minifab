@@ -14,11 +14,12 @@ import (
 )
 
 var (
-	address     string
-	mspID       string
-	mspPath     string
-	genesisFile string
-	bootstrap   bool
+	address      string
+	mspID        string
+	mspPath      string
+	genesisFile  string
+	configTxPath string
+	bootstrap    bool
 )
 
 // rootCmd는 orderer의 루트 명령어를 나타냅니다
@@ -52,6 +53,7 @@ func init() {
 
 	// Bootstrap command flags
 	bootstrapCmd.Flags().StringVar(&genesisFile, "genesis-file", "./genesis.json", "Path to save/load genesis block file")
+	bootstrapCmd.Flags().StringVar(&configTxPath, "configtx", "./config/configtx.yaml", "Path to configtx.yaml file")
 	bootstrapCmd.Flags().BoolVar(&bootstrap, "bootstrap", false, "Bootstrap network with genesis block")
 
 	// Add subcommands
@@ -99,13 +101,32 @@ func runBootstrap(cmd *cobra.Command, args []string) {
 	// Orderer 인스턴스 생성 (MSP 파일 사용)
 	o := orderer.NewOrdererWithMSPFiles(mspID, mspPath)
 
-	// 기본 제네시스 설정 생성
-	genesisConfig := orderer.DefaultGenesisConfig()
+	// configtx.yaml에서 제네시스 설정 생성
+	genesisConfig, err := orderer.CreateGenesisConfigFromConfigTx(configTxPath)
+	if err != nil {
+		logger.Warnf("Failed to load configtx.yaml: %v", err)
+		logger.Info("Using default genesis configuration instead")
 
-	// MSP 경로 업데이트 (현재 설정 사용)
-	if len(genesisConfig.OrdererOrgs) > 0 {
-		genesisConfig.OrdererOrgs[0].MSPDir = mspPath
-		genesisConfig.OrdererOrgs[0].ID = mspID
+		// configtx.yaml 로드 실패 시 기본 설정 사용
+		genesisConfig = orderer.DefaultGenesisConfig()
+
+		// MSP 경로 업데이트 (현재 설정 사용)
+		if len(genesisConfig.OrdererOrgs) > 0 {
+			genesisConfig.OrdererOrgs[0].MSPDir = mspPath
+			genesisConfig.OrdererOrgs[0].ID = mspID
+		}
+	} else {
+		logger.Info("Successfully loaded configuration from configtx.yaml")
+
+		// configtx.yaml에서 로드한 설정에서 실제 MSP 경로와 ID로 업데이트
+		// (명령행 인수가 우선순위를 가짐)
+		for _, ordererOrg := range genesisConfig.OrdererOrgs {
+			if ordererOrg.ID == mspID || len(genesisConfig.OrdererOrgs) == 1 {
+				ordererOrg.MSPDir = mspPath
+				ordererOrg.ID = mspID
+				break
+			}
+		}
 	}
 
 	// 네트워크 부트스트랩 실행
@@ -120,6 +141,7 @@ func runBootstrap(cmd *cobra.Command, args []string) {
 
 	logger.Info("Network bootstrap completed successfully!")
 	logger.Infof("Genesis block saved to: %s", genesisFile)
+	logger.Infof("Configuration loaded from: %s", configTxPath)
 	logger.Info("You can now start the orderer with: ./bin/orderer")
 }
 
