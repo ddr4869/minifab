@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package orderer;
+
+option go_package = "github.com/ddr4869/minifab/common/proto";
+
+service OrdererService {
+    rpc SubmitTransaction(Transaction) returns (TransactionResponse) {}
+    rpc GetBlock(BlockRequest) returns (Block) {}
+    rpc CreateChannel(ChannelRequest) returns (ChannelResponse) {}
+}
+
+message Transaction {
+    string id = 1;
+    string channel_id = 2;
+    bytes payload = 3;
+    int64 timestamp = 4;
+}
+
+message TransactionResponse {
+    bool success = 1;
+    string message = 2;
+}
+
+message BlockRequest {
+    uint64 block_number = 1;
+    string channel_id = 2;
+}
+
+message Block {
+    uint64 number = 1;
+    bytes previous_hash = 2;
+    bytes data = 3;
+    int64 timestamp = 4;
+}
+
+message ChannelRequest {
+    string channel_name = 1;
+}
+
+message ChannelResponse {
+    bool success = 1;
+    string message = 2;
+} 

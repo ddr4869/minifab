@@ -1,0 +1,137 @@
+package msp
+
+import (
+	"crypto"
+	"crypto/x509"
+	"fmt"
+	"time"
+)
+
+// identity MSP Identity 구현
+type identity struct {
+	msp  *FabricMSP
+	id   *IdentityIdentifier
+	cert *x509.Certificate
+	pk   crypto.PublicKey
+}
+
+// GetIdentifier Identity 식별자 반환
+func (id *identity) GetIdentifier() *IdentityIdentifier {
+	return id.id
+}
+
+// GetMSPIdentifier MSP 식별자 반환
+func (id *identity) GetMSPIdentifier() string {
+	return id.id.Mspid
+}
+
+// Validate Identity 검증
+func (id *identity) Validate() error {
+	if id.msp == nil {
+		return fmt.Errorf("MSP cannot be nil")
+	}
+	if id.id == nil {
+		return fmt.Errorf("identity identifier cannot be nil")
+	}
+	if id.cert == nil {
+		return fmt.Errorf("certificate cannot be nil")
+	}
+
+	// 인증서 유효성 검사
+	if id.cert.NotAfter.Before(time.Now()) {
+		return fmt.Errorf("certificate has expired")
+	}
+
+	return nil
+}
+
+// GetOrganizationalUnits 조직 단위 반환
+func (id *identity) GetOrganizationalUnits() []*OUIdentifier {
+	ous := make([]*OUIdentifier, 0)
+
+	if id.cert != nil {
+		for _, ou := range id.cert.Subject.OrganizationalUnit {
+			ous = append(ous, &OUIdentifier{
+				OrganizationalUnitIdentifier: ou,
+			})
+		}
+	}
+
+	return ous
+}
+
+// Verify 서명 검증
+func (id *identity) Verify(msg []byte, sig []byte) error {
+	if id.pk == nil {
+		return fmt.Errorf("public key cannot be nil")
+	}
+
+	// 실제 구현에서는 서명 알고리즘에 따른 검증 수행
+	// 여기서는 간단한 구현만 제공
+	return nil
+}
+
+// Serialize Identity 직렬화
+func (id *identity) Serialize() ([]byte, error) {
+	if id.cert == nil {
+		return nil, fmt.Errorf("certificate cannot be nil")
+	}
+
+	// 실제 구현에서는 protobuf를 사용하여 직렬화
+	serialized := &SerializedIdentity{
+		Mspid:   id.GetMSPIdentifier(),
+		IdBytes: id.cert.Raw,
+	}
+
+	// 간단한 직렬화 (실제로는 protobuf 사용)
+	return []byte(fmt.Sprintf("%s:%s", serialized.Mspid, string(serialized.IdBytes))), nil
+}
+
+// SatisfiesPrincipal Principal 조건 확인
+func (id *identity) SatisfiesPrincipal(principal *MSPPrincipal) error {
+	if principal == nil {
+		return fmt.Errorf("principal cannot be nil")
+	}
+
+	switch principal.PrincipalClassification {
+	case MSPPrincipal_ROLE:
+		return id.satisfiesRole(principal.Principal)
+	case MSPPrincipal_ORGANIZATION_UNIT:
+		return id.satisfiesOU(principal.Principal)
+	case MSPPrincipal_IDENTITY:
+		return id.satisfiesIdentity(principal.Principal)
+	default:
+		return fmt.Errorf("unsupported principal classification")
+	}
+}
+
+// satisfiesRole 역할 기반 조건 확인
+func (id *identity) satisfiesRole(roleBytes []byte) error {
+	// 실제 구현에서는 역할 정보를 파싱하여 확인
+	return nil
+}
+
+// satisfiesOU 조직 단위 기반 조건 확인
+func (id *identity) satisfiesOU(ouBytes []byte) error {
+	// 실제 구현에서는 OU 정보를 파싱하여 확인
+	return nil
+}
+
+// satisfiesIdentity Identity 기반 조건 확인
+func (id *identity) satisfiesIdentity(identityBytes []byte) error {
+	// 실제 구현에서는 Identity 정보를 파싱하여 확인
+	return nil
+}
+
+// NewIdentity Identity 생성
+func NewIdentity(msp *FabricMSP, cert *x509.Certificate, pk crypto.PublicKey, mspID string) *identity {
+	return &identity{
+		msp:  msp,
+		cert: cert,
+		pk:   pk,
+		id: &IdentityIdentifier{
+			Mspid: mspID,
+			Id:    cert.Subject.CommonName,
+		},
+	}
+}
