@@ -10,6 +10,13 @@ import (
 	"github.com/pkg/errors"
 )
 
+type Block struct {
+	Number       uint64
+	PreviousHash []byte
+	Data         []byte
+	Timestamp    time.Time
+}
+
 type Transaction struct {
 	ID        string
 	ChannelID string

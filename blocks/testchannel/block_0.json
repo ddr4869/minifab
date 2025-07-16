@@ -1,0 +1,12 @@
+{
+  "block": {
+    "Number": 0,
+    "PreviousHash": null,
+    "Data": "QmxvY2sgMCB0ZXN0IGRhdGE=",
+    "Timestamp": "2025-07-16T11:06:35+09:00"
+  },
+  "channel_id": "testchannel",
+  "stored_at": "2025-07-16T11:06:35.834577+09:00",
+  "is_committed": false,
+  "block_hash": "exAzL5mAYbL5+DUq4cbU2McG7LZ1B1E8GAEfl/KWE4E="
+}

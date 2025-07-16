@@ -255,3 +255,8 @@ func (cm *ChannelManager) ListChannels() []string {
 
 	return channels
 }
+
+// GetChannelNames returns the names of all channels (alias for ListChannels)
+func (cm *ChannelManager) GetChannelNames() []string {
+	return cm.ListChannels()
+}
