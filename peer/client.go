@@ -12,7 +12,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/ddr4869/minifab/common/logger"
-	"github.com/ddr4869/minifab/common/proto"
+	"github.com/ddr4869/minifab/proto"
 )
 
 type OrdererClient struct {

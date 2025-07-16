@@ -2,43 +2,545 @@ syntax = "proto3";
 
 package orderer;
 
-option go_package = "github.com/ddr4869/minifab/common/proto";
+option go_package = "./proto";
 
+// OrdererService handles transaction ordering and block creation
 service OrdererService {
     rpc SubmitTransaction(Transaction) returns (TransactionResponse) {}
     rpc GetBlock(BlockRequest) returns (Block) {}
     rpc CreateChannel(ChannelRequest) returns (ChannelResponse) {}
+    rpc BroadcastBlock(BroadcastRequest) returns (BroadcastResponse) {}
+    rpc GetChannelInfo(ChannelInfoRequest) returns (ChannelInfoResponse) {}
+    // Enhanced block broadcasting methods
+    rpc BroadcastToChannel(ChannelBroadcastRequest) returns (ChannelBroadcastResponse) {}
+    rpc StreamBlocks(BlockStreamRequest) returns (stream Block) {}
+    rpc GetBlockRange(BlockRangeRequest) returns (BlockRangeResponse) {}
+    rpc GetOrdererStatus(OrdererStatusRequest) returns (OrdererStatusResponse) {}
+    rpc UpdateChannelConfig(ChannelConfigUpdateRequest) returns (ChannelConfigUpdateResponse) {}
 }
 
+// PeerService handles transaction endorsement and validation
+service PeerService {
+    rpc ProcessBlock(Block) returns (ProcessBlockResponse) {}
+    rpc EndorseTransaction(TransactionProposal) returns (EndorsementResponse) {}
+    rpc ValidateTransaction(ValidationRequest) returns (ValidationResponse) {}
+    rpc JoinChannel(JoinChannelRequest) returns (JoinChannelResponse) {}
+    rpc QueryLedger(LedgerQuery) returns (LedgerQueryResponse) {}
+    rpc GetPeerInfo(PeerInfoRequest) returns (PeerInfoResponse) {}
+    // Enhanced peer communication methods
+    rpc SyncBlocks(BlockSyncRequest) returns (stream Block) {}
+    rpc NotifyBlockCommit(BlockCommitNotification) returns (BlockCommitResponse) {}
+    rpc GetChannelHeight(ChannelHeightRequest) returns (ChannelHeightResponse) {}
+    rpc ValidateEndorsement(EndorsementValidationRequest) returns (EndorsementValidationResponse) {}
+    rpc GetTransactionStatus(TransactionStatusRequest) returns (TransactionStatusResponse) {}
+    rpc LeaveChannel(LeaveChannelRequest) returns (LeaveChannelResponse) {}
+    rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse) {}
+}
+
+// Status codes for error handling
+enum StatusCode {
+    OK = 0;
+    INVALID_ARGUMENT = 1;
+    NOT_FOUND = 2;
+    ALREADY_EXISTS = 3;
+    PERMISSION_DENIED = 4;
+    INTERNAL_ERROR = 5;
+    UNAVAILABLE = 6;
+    TIMEOUT = 7;
+    INVALID_SIGNATURE = 8;
+    INVALID_CERTIFICATE = 9;
+    CHANNEL_NOT_FOUND = 10;
+    TRANSACTION_VALIDATION_FAILED = 11;
+    ENDORSEMENT_POLICY_FAILURE = 12;
+    // Enhanced error codes for better error handling
+    NETWORK_ERROR = 13;
+    CONSENSUS_ERROR = 14;
+    LEDGER_ERROR = 15;
+    MSP_ERROR = 16;
+    CHAINCODE_ERROR = 17;
+    BLOCK_VALIDATION_FAILED = 18;
+    DUPLICATE_TRANSACTION = 19;
+    INSUFFICIENT_ENDORSEMENTS = 20;
+    POLICY_VIOLATION = 21;
+    RESOURCE_EXHAUSTED = 22;
+    SERVICE_UNAVAILABLE = 23;
+    CONFIGURATION_ERROR = 24;
+    CRYPTO_ERROR = 25;
+    STORAGE_ERROR = 26;
+    CHANNEL_CONFIG_ERROR = 27;
+    PEER_NOT_FOUND = 28;
+    ORDERER_NOT_FOUND = 29;
+    INVALID_BLOCK = 30;
+    INVALID_TRANSACTION_FORMAT = 31;
+    ENDORSEMENT_MISMATCH = 32;
+    READ_WRITE_SET_ERROR = 33;
+    SIMULATION_ERROR = 34;
+    COMMITMENT_ERROR = 35;
+}
+
+// Enhanced Transaction message with identity and signature
 message Transaction {
     string id = 1;
     string channel_id = 2;
     bytes payload = 3;
     int64 timestamp = 4;
+    bytes identity = 5;
+    bytes signature = 6;
+    string creator_msp_id = 7;
+    TransactionType type = 8;
 }
 
+enum TransactionType {
+    ENDORSER_TRANSACTION = 0;
+    CONFIG_TRANSACTION = 1;
+    TOKEN_TRANSACTION = 2;
+}
+
+// Enhanced response with status codes
 message TransactionResponse {
-    bool success = 1;
+    StatusCode status = 1;
     string message = 2;
+    string transaction_id = 3;
+    bytes block_hash = 4;
 }
 
 message BlockRequest {
     uint64 block_number = 1;
     string channel_id = 2;
+    bool include_transactions = 3;
 }
 
+// Enhanced Block message with transaction list
 message Block {
     uint64 number = 1;
     bytes previous_hash = 2;
-    bytes data = 3;
+    bytes data_hash = 3;
     int64 timestamp = 4;
+    repeated Transaction transactions = 5;
+    BlockMetadata metadata = 6;
+    string channel_id = 7;
+}
+
+message BlockMetadata {
+    bytes signatures = 1;
+    bytes last_config = 2;
+    bytes transaction_filter = 3;
+    bytes orderer_metadata = 4;
 }
 
 message ChannelRequest {
     string channel_name = 1;
+    ChannelConfig config = 2;
+    bytes genesis_block = 3;
 }
 
 message ChannelResponse {
-    bool success = 1;
+    StatusCode status = 1;
     string message = 2;
+    string channel_id = 3;
+}
+
+// New messages for block broadcasting
+message BroadcastRequest {
+    Block block = 1;
+    string channel_id = 2;
+    repeated string peer_endpoints = 3;
+}
+
+message BroadcastResponse {
+    StatusCode status = 1;
+    string message = 2;
+    int32 peers_notified = 3;
+    repeated string failed_peers = 4;
+}
+
+// Channel information messages
+message ChannelInfoRequest {
+    string channel_id = 1;
+}
+
+message ChannelInfoResponse {
+    StatusCode status = 1;
+    string message = 2;
+    ChannelInfo info = 3;
+}
+
+message ChannelInfo {
+    string channel_id = 1;
+    uint64 height = 2;
+    bytes current_block_hash = 3;
+    bytes previous_block_hash = 4;
+    repeated string peer_endpoints = 5;
+    ChannelConfig config = 6;
+}
+
+message ChannelConfig {
+    string name = 1;
+    repeated string orderer_endpoints = 2;
+    repeated string peer_endpoints = 3;
+    map<string, MSPConfig> msp_configs = 4;
+    map<string, Policy> policies = 5;
+    int32 batch_size = 6;
+    int32 batch_timeout_ms = 7;
+}
+
+message MSPConfig {
+    string msp_id = 1;
+    bytes root_certs = 2;
+    bytes intermediate_certs = 3;
+    bytes admins = 4;
+    bytes revocation_list = 5;
+    string signing_identity = 6;
+    bytes tls_root_certs = 7;
+    bytes tls_intermediate_certs = 8;
+}
+
+message Policy {
+    string type = 1;
+    bytes value = 2;
+}
+
+// Peer service messages
+message ProcessBlockResponse {
+    StatusCode status = 1;
+    string message = 2;
+    uint64 block_number = 3;
+    int32 valid_transactions = 4;
+    int32 invalid_transactions = 5;
+}
+
+message TransactionProposal {
+    string proposal_id = 1;
+    string channel_id = 2;
+    bytes payload = 3;
+    bytes identity = 4;
+    bytes signature = 5;
+    string chaincode_id = 6;
+    string function_name = 7;
+    repeated string args = 8;
+    int64 timestamp = 9;
+}
+
+message EndorsementResponse {
+    StatusCode status = 1;
+    string message = 2;
+    string proposal_id = 3;
+    bytes endorsement = 4;
+    bytes payload_hash = 5;
+    string endorser_msp_id = 6;
+    bytes read_write_set = 7;
+}
+
+message ValidationRequest {
+    Transaction transaction = 1;
+    string channel_id = 2;
+    bool check_endorsement_policy = 3;
+}
+
+message ValidationResponse {
+    StatusCode status = 1;
+    string message = 2;
+    bool is_valid = 3;
+    string validation_code = 4;
+    repeated string validation_errors = 5;
+}
+
+message JoinChannelRequest {
+    string channel_id = 1;
+    Block genesis_block = 2;
+    string peer_id = 3;
+    bytes peer_identity = 4;
+}
+
+message JoinChannelResponse {
+    StatusCode status = 1;
+    string message = 2;
+    string channel_id = 3;
+    uint64 current_height = 4;
+}
+
+message LedgerQuery {
+    string channel_id = 1;
+    string key = 2;
+    string start_key = 3;
+    string end_key = 4;
+    int32 limit = 5;
+    string bookmark = 6;
+    QueryType query_type = 7;
+}
+
+enum QueryType {
+    GET_STATE = 0;
+    GET_STATE_BY_RANGE = 1;
+    GET_HISTORY_FOR_KEY = 2;
+    QUERY_STATE = 3;
+}
+
+message LedgerQueryResponse {
+    StatusCode status = 1;
+    string message = 2;
+    bytes value = 3;
+    repeated KeyValue results = 4;
+    string bookmark = 5;
+    bool has_more = 6;
+}
+
+message KeyValue {
+    string key = 1;
+    bytes value = 2;
+    string namespace = 3;
+    int64 version = 4;
+}
+
+message PeerInfoRequest {
+    string peer_id = 1;
+}
+
+message PeerInfoResponse {
+    StatusCode status = 1;
+    string message = 2;
+    PeerInfo info = 3;
+}
+
+message PeerInfo {
+    string peer_id = 1;
+    string endpoint = 2;
+    repeated string channels = 3;
+    string msp_id = 4;
+    PeerStatus peer_status = 5;
+    int64 ledger_height = 6;
+}
+
+enum PeerStatus {
+    ACTIVE = 0;
+    INACTIVE = 1;
+    JOINING = 2;
+    SYNCING = 3;
+    ERROR = 4;
+}
+
+// Enhanced OrdererService message definitions
+message ChannelBroadcastRequest {
+    string channel_id = 1;
+    Block block = 2;
+    BroadcastOptions options = 3;
+}
+
+message BroadcastOptions {
+    bool wait_for_confirmation = 1;
+    int32 timeout_ms = 2;
+    repeated string target_peers = 3;
+    bool include_orderer_signature = 4;
+}
+
+message ChannelBroadcastResponse {
+    StatusCode status = 1;
+    string message = 2;
+    int32 successful_broadcasts = 3;
+    int32 failed_broadcasts = 4;
+    repeated BroadcastResult results = 5;
+}
+
+message BroadcastResult {
+    string peer_endpoint = 1;
+    StatusCode status = 2;
+    string error_message = 3;
+    int64 response_time_ms = 4;
+}
+
+message BlockStreamRequest {
+    string channel_id = 1;
+    uint64 start_block = 2;
+    uint64 end_block = 3; // 0 means stream indefinitely
+    bool include_transactions = 4;
+}
+
+message BlockRangeRequest {
+    string channel_id = 1;
+    uint64 start_block = 2;
+    uint64 end_block = 3;
+    bool include_transactions = 4;
+    int32 max_blocks = 5;
+}
+
+message BlockRangeResponse {
+    StatusCode status = 1;
+    string message = 2;
+    repeated Block blocks = 3;
+    bool has_more = 4;
+    uint64 next_block = 5;
+}
+
+message OrdererStatusRequest {
+    bool include_channels = 1;
+    bool include_metrics = 2;
+}
+
+message OrdererStatusResponse {
+    StatusCode status = 1;
+    string message = 2;
+    OrdererStatus orderer_status = 3;
+}
+
+message OrdererStatus {
+    string orderer_id = 1;
+    string endpoint = 2;
+    bool is_leader = 3;
+    repeated string channels = 4;
+    OrdererMetrics metrics = 5;
+    int64 uptime_seconds = 6;
+    string version = 7;
+}
+
+message OrdererMetrics {
+    uint64 total_transactions = 1;
+    uint64 total_blocks = 2;
+    double avg_block_time_ms = 3;
+    uint64 pending_transactions = 4;
+    int32 active_channels = 5;
+    int32 connected_peers = 6;
+}
+
+message ChannelConfigUpdateRequest {
+    string channel_id = 1;
+    ChannelConfig new_config = 2;
+    bytes config_update_signature = 3;
+    string update_reason = 4;
+}
+
+message ChannelConfigUpdateResponse {
+    StatusCode status = 1;
+    string message = 2;
+    uint64 config_sequence = 3;
+    bytes config_block_hash = 4;
+}
+
+// Enhanced PeerService message definitions
+message BlockSyncRequest {
+    string channel_id = 1;
+    uint64 start_block = 2;
+    uint64 current_height = 3;
+    string peer_id = 4;
+}
+
+message BlockCommitNotification {
+    string channel_id = 1;
+    uint64 block_number = 2;
+    bytes block_hash = 3;
+    int32 transaction_count = 4;
+    string committing_peer = 5;
+}
+
+message BlockCommitResponse {
+    StatusCode status = 1;
+    string message = 2;
+    bool acknowledged = 3;
+}
+
+message ChannelHeightRequest {
+    string channel_id = 1;
+    string peer_id = 2;
+}
+
+message ChannelHeightResponse {
+    StatusCode status = 1;
+    string message = 2;
+    uint64 height = 3;
+    bytes current_block_hash = 4;
+}
+
+message EndorsementValidationRequest {
+    bytes endorsement = 1;
+    string channel_id = 2;
+    string chaincode_id = 3;
+    bytes proposal_hash = 4;
+}
+
+message EndorsementValidationResponse {
+    StatusCode status = 1;
+    string message = 2;
+    bool is_valid = 3;
+    string endorser_msp_id = 4;
+    repeated string validation_errors = 5;
+}
+
+message TransactionStatusRequest {
+    string transaction_id = 1;
+    string channel_id = 2;
+}
+
+message TransactionStatusResponse {
+    StatusCode status = 1;
+    string message = 2;
+    TransactionStatus tx_status = 3;
+}
+
+message TransactionStatus {
+    string transaction_id = 1;
+    string channel_id = 2;
+    TransactionState state = 3;
+    uint64 block_number = 4;
+    int32 transaction_index = 5;
+    string validation_code = 6;
+    int64 timestamp = 7;
+}
+
+enum TransactionState {
+    PENDING = 0;
+    COMMITTED = 1;
+    INVALID = 2;
+    UNKNOWN = 3;
+}
+
+message LeaveChannelRequest {
+    string channel_id = 1;
+    string peer_id = 2;
+    bytes peer_signature = 3;
+}
+
+message LeaveChannelResponse {
+    StatusCode status = 1;
+    string message = 2;
+    bool channel_left = 3;
+}
+
+message HealthCheckRequest {
+    string service_name = 1;
+    bool check_channels = 2;
+    bool check_connectivity = 3;
+}
+
+message HealthCheckResponse {
+    StatusCode status = 1;
+    string message = 2;
+    HealthStatus health_status = 3;
+}
+
+message HealthStatus {
+    ServiceHealth overall_health = 1;
+    repeated ChannelHealth channel_health = 2;
+    ConnectivityHealth connectivity = 3;
+    int64 last_check_timestamp = 4;
+}
+
+enum ServiceHealth {
+    HEALTHY = 0;
+    UNHEALTHY = 1;
+    DEGRADED = 2;
+    UNKNOWN_HEALTH = 3;
+}
+
+message ChannelHealth {
+    string channel_id = 1;
+    ServiceHealth health = 2;
+    uint64 last_block_time = 3;
+    int32 peer_count = 4;
+    string status_message = 5;
+}
+
+message ConnectivityHealth {
+    int32 connected_orderers = 1;
+    int32 connected_peers = 2;
+    repeated string unreachable_endpoints = 3;
+    double avg_response_time_ms = 4;
 } 

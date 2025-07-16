@@ -7,7 +7,7 @@ import (
 	"sync"
 
 	"github.com/ddr4869/minifab/common/logger"
-	pb "github.com/ddr4869/minifab/common/proto"
+	pb "github.com/ddr4869/minifab/proto"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 )
@@ -33,14 +33,16 @@ func (s *OrdererServer) SubmitTransaction(ctx context.Context, req *pb.Transacti
 	block, err := s.orderer.CreateBlock(req.Payload)
 	if err != nil {
 		return &pb.TransactionResponse{
-			Success: false,
-			Message: fmt.Sprintf("Failed to create block: %v", err),
+			Status:        pb.StatusCode_INTERNAL_ERROR,
+			Message:       fmt.Sprintf("Failed to create block: %v", err),
+			TransactionId: req.Id,
 		}, nil
 	}
 
 	return &pb.TransactionResponse{
-		Success: true,
-		Message: fmt.Sprintf("Transaction %s added to block %d", req.Id, block.Number),
+		Status:        pb.StatusCode_OK,
+		Message:       fmt.Sprintf("Transaction %s added to block %d", req.Id, block.Number),
+		TransactionId: req.Id,
 	}, nil
 }
 
@@ -58,8 +60,9 @@ func (s *OrdererServer) GetBlock(ctx context.Context, req *pb.BlockRequest) (*pb
 	pbBlock := &pb.Block{
 		Number:       block.Number,
 		PreviousHash: block.PreviousHash,
-		Data:         block.Data,
+		DataHash:     block.Data, // Changed from Data to DataHash
 		Timestamp:    block.Timestamp.Unix(),
+		ChannelId:    req.ChannelId,
 	}
 
 	logger.Infof("Successfully retrieved block %d", req.BlockNumber)
@@ -75,8 +78,9 @@ func (s *OrdererServer) CreateChannel(ctx context.Context, req *pb.ChannelReques
 	// 채널이 이미 존재하는지 확인
 	if _, exists := s.orderer.channels[req.ChannelName]; exists {
 		return &pb.ChannelResponse{
-			Success: false,
-			Message: fmt.Sprintf("Channel %s already exists", req.ChannelName),
+			Status:    pb.StatusCode_ALREADY_EXISTS,
+			Message:   fmt.Sprintf("Channel %s already exists", req.ChannelName),
+			ChannelId: req.ChannelName,
 		}, nil
 	}
 
@@ -90,8 +94,9 @@ func (s *OrdererServer) CreateChannel(ctx context.Context, req *pb.ChannelReques
 	s.orderer.channels[req.ChannelName] = channel
 
 	return &pb.ChannelResponse{
-		Success: true,
-		Message: fmt.Sprintf("Channel %s created successfully", req.ChannelName),
+		Status:    pb.StatusCode_OK,
+		Message:   fmt.Sprintf("Channel %s created successfully", req.ChannelName),
+		ChannelId: req.ChannelName,
 	}, nil
 }
 

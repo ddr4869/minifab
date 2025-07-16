@@ -793,19 +793,18 @@ func convertPoliciesFromYAML(yamlPolicies map[string]PolicyYAML) map[string]*Pol
 			Type: yamlPolicy.Type,
 		}
 
-		// 정책 규칙 변환
-		if yamlPolicy.Type == PolicyTypeImplicitMeta {
+		switch yamlPolicy.Type {
+		case PolicyTypeImplicitMeta:
 			// ImplicitMeta 정책 파싱 (예: "ANY Readers", "MAJORITY Admins")
 			rule := parseImplicitMetaRule(yamlPolicy.Rule)
 			policy.Rule = rule
-		} else if yamlPolicy.Type == PolicyTypeSignature {
+		case PolicyTypeSignature:
 			// Signature 정책 파싱 (현재는 원본 규칙 문자열을 그대로 사용)
 			policy.Rule = yamlPolicy.Rule
-		} else {
+		default:
 			// 기타 정책 타입
 			policy.Rule = yamlPolicy.Rule
 		}
-
 		policies[name] = policy
 	}
 
