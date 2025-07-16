@@ -1,0 +1,55 @@
+{
+  "name": "testchannel0",
+  "config": {
+    "channel_id": "testchannel0",
+    "consortium": "SampleConsortium",
+    "orderer_address": "localhost:7050",
+    "organizations": [],
+    "capabilities": {
+      "V2_0": true
+    },
+    "policies": {
+      "Admins": "ANY",
+      "Readers": "ANY",
+      "Writers": "ANY"
+    },
+    "version": 1
+  },
+  "genesis_block": {
+    "number": 0,
+    "previous_hash": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
+    "data": "eyJjaGFubmVsX2lkIjoidGVzdGNoYW5uZWwwIiwiY29uc29ydGl1bSI6IlNhbXBsZUNvbnNvcnRpdW0iLCJvcmRlcmVyX2FkZHJlc3MiOiJsb2NhbGhvc3Q6NzA1MCIsIm9yZ2FuaXphdGlvbnMiOltdLCJjYXBhYmlsaXRpZXMiOnsiVjJfMCI6dHJ1ZX0sInBvbGljaWVzIjp7IkFkbWlucyI6IkFOWSIsIlJlYWRlcnMiOiJBTlkiLCJXcml0ZXJzIjoiQU5ZIn0sInZlcnNpb24iOjF9",
+    "config": {
+      "channel_id": "testchannel0",
+      "consortium": "SampleConsortium",
+      "orderer_address": "localhost:7050",
+      "organizations": [],
+      "capabilities": {
+        "V2_0": true
+      },
+      "policies": {
+        "Admins": "ANY",
+        "Readers": "ANY",
+        "Writers": "ANY"
+      },
+      "version": 1
+    },
+    "timestamp": "2025-07-16T18:34:05.861768+09:00"
+  },
+  "transactions": null,
+  "state": {},
+  "msp_config": {
+    "Name": "Org1MSP.testchannel0",
+    "RootCerts": null,
+    "Admins": null,
+    "RevocationList": null,
+    "SigningIdentity": null,
+    "OrganizationalUnitIdentifiers": null,
+    "CryptoConfig": {
+      "SignatureHashFamily": "SHA2",
+      "IdentityIdentifierHashFunction": "SHA256"
+    },
+    "TLSRootCerts": null,
+    "NodeOUs": null
+  }
+}

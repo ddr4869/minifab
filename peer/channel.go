@@ -130,6 +130,7 @@ func (cm *ChannelManager) saveChannel(channel *Channel) error {
 }
 
 // CreateChannelConfig 채널 구성 정보 생성
+// TODO : configtx.yaml Profile 이용
 func (cm *ChannelManager) CreateChannelConfig(channelID string, consortium string, ordererAddress string) (*ChannelConfig, error) {
 	config := &ChannelConfig{
 		ChannelID:      channelID,

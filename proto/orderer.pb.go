@@ -827,6 +827,8 @@ type ChannelRequest struct {
 	ChannelName   string                 `protobuf:"bytes,1,opt,name=channel_name,json=channelName,proto3" json:"channel_name,omitempty"`
 	Config        *ChannelConfig         `protobuf:"bytes,2,opt,name=config,proto3" json:"config,omitempty"`
 	GenesisBlock  []byte                 `protobuf:"bytes,3,opt,name=genesis_block,json=genesisBlock,proto3" json:"genesis_block,omitempty"`
+	ProfileName   string                 `protobuf:"bytes,4,opt,name=profile_name,json=profileName,proto3" json:"profile_name,omitempty"`    // Profile name from configtx.yaml
+	ConfigtxPath  string                 `protobuf:"bytes,5,opt,name=configtx_path,json=configtxPath,proto3" json:"configtx_path,omitempty"` // Path to configtx.yaml file
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -880,6 +882,20 @@ func (x *ChannelRequest) GetGenesisBlock() []byte {
 		return x.GenesisBlock
 	}
 	return nil
+}
+
+func (x *ChannelRequest) GetProfileName() string {
+	if x != nil {
+		return x.ProfileName
+	}
+	return ""
+}
+
+func (x *ChannelRequest) GetConfigtxPath() string {
+	if x != nil {
+		return x.ConfigtxPath
+	}
+	return ""
 }
 
 type ChannelResponse struct {
@@ -4569,11 +4585,13 @@ const file_common_proto_orderer_proto_rawDesc = "" +
 	"\vlast_config\x18\x02 \x01(\fR\n" +
 	"lastConfig\x12-\n" +
 	"\x12transaction_filter\x18\x03 \x01(\fR\x11transactionFilter\x12)\n" +
-	"\x10orderer_metadata\x18\x04 \x01(\fR\x0fordererMetadata\"\x88\x01\n" +
+	"\x10orderer_metadata\x18\x04 \x01(\fR\x0fordererMetadata\"\xd0\x01\n" +
 	"\x0eChannelRequest\x12!\n" +
 	"\fchannel_name\x18\x01 \x01(\tR\vchannelName\x12.\n" +
 	"\x06config\x18\x02 \x01(\v2\x16.orderer.ChannelConfigR\x06config\x12#\n" +
-	"\rgenesis_block\x18\x03 \x01(\fR\fgenesisBlock\"w\n" +
+	"\rgenesis_block\x18\x03 \x01(\fR\fgenesisBlock\x12!\n" +
+	"\fprofile_name\x18\x04 \x01(\tR\vprofileName\x12#\n" +
+	"\rconfigtx_path\x18\x05 \x01(\tR\fconfigtxPath\"w\n" +
 	"\x0fChannelResponse\x12+\n" +
 	"\x06status\x18\x01 \x01(\x0e2\x13.orderer.StatusCodeR\x06status\x12\x18\n" +
 	"\amessage\x18\x02 \x01(\tR\amessage\x12\x1d\n" +

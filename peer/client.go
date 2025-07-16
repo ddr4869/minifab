@@ -70,13 +70,22 @@ func (oc *OrdererClient) SubmitTransaction(tx *Transaction) error {
 }
 
 func (oc *OrdererClient) CreateChannel(channelName string) error {
+	return oc.CreateChannelWithProfile(channelName, "testchannel0", "config/configtx.yaml")
+}
+
+// CreateChannelWithProfile creates a channel with specified profile from configtx.yaml
+func (oc *OrdererClient) CreateChannelWithProfile(channelName, profileName, configTxPath string) error {
 	if oc.client == nil {
 		return errors.New("client not connected")
 	}
 
-	// gRPC 요청 생성
+	logger.Infof("Creating channel %s with profile %s", channelName, profileName)
+
+	// gRPC 요청 생성 (profile 정보 포함)
 	req := &proto.ChannelRequest{
-		ChannelName: channelName,
+		ChannelName:  channelName,
+		ProfileName:  profileName,
+		ConfigtxPath: configTxPath,
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -85,6 +94,15 @@ func (oc *OrdererClient) CreateChannel(channelName string) error {
 	resp, err := oc.client.CreateChannel(ctx, req)
 	if err != nil {
 		return errors.Wrap(err, "failed to create channel")
+	}
+
+	if resp.Status != proto.StatusCode_OK {
+		// If channel already exists, that's okay for our use case
+		if resp.Status == proto.StatusCode_ALREADY_EXISTS {
+			logger.Infof("Channel %s already exists: %s", channelName, resp.Message)
+			return nil
+		}
+		return errors.Errorf("orderer returned error: %s", resp.Message)
 	}
 
 	logger.Infof("Channel created successfully: %s", resp.Message)

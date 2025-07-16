@@ -21,20 +21,39 @@ func NewCLIHandlers(peer *Peer, ordererClient *OrdererClient) *CLIHandlers {
 
 // HandleChannelCreate 채널 생성 명령어 처리
 func (h *CLIHandlers) HandleChannelCreate(channelName string, ordererAddress string) error {
-	// 채널 생성 (새로운 로직 사용)
-	if err := h.peer.GetChannelManager().CreateChannel(channelName, "SampleConsortium", ordererAddress); err != nil {
+	// 채널 생성 (orderer를 통한 새로운 로직 사용)
+	if err := h.peer.CreateChannel(channelName, h.ordererClient); err != nil {
 		return errors.Wrap(err, "failed to create channel")
 	}
 	logger.Infof("Channel %s created successfully", channelName)
 	return nil
 }
 
+// HandleChannelCreateWithProfile 프로파일을 사용한 채널 생성 명령어 처리
+func (h *CLIHandlers) HandleChannelCreateWithProfile(channelName, profileName string) error {
+	// 채널 생성 (orderer를 통한 프로파일 기반 로직 사용)
+	if err := h.peer.CreateChannelWithProfile(channelName, profileName, h.ordererClient); err != nil {
+		return errors.Wrap(err, "failed to create channel with profile")
+	}
+	logger.Infof("Channel %s created successfully with profile %s", channelName, profileName)
+	return nil
+}
+
 // HandleChannelJoin 채널 참여 명령어 처리
 func (h *CLIHandlers) HandleChannelJoin(channelName string) error {
-	if err := h.peer.JoinChannel(channelName); err != nil {
+	if err := h.peer.JoinChannel(channelName, h.ordererClient); err != nil {
 		return errors.Wrap(err, "failed to join channel")
 	}
 	logger.Infof("Successfully joined channel %s", channelName)
+	return nil
+}
+
+// HandleChannelJoinWithProfile 프로파일을 사용한 채널 참여 명령어 처리
+func (h *CLIHandlers) HandleChannelJoinWithProfile(channelName, profileName string) error {
+	if err := h.peer.JoinChannelWithProfile(channelName, profileName, h.ordererClient); err != nil {
+		return errors.Wrap(err, "failed to join channel with profile")
+	}
+	logger.Infof("Successfully joined channel %s with profile %s", channelName, profileName)
 	return nil
 }
 

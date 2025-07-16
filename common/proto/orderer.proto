@@ -132,6 +132,8 @@ message ChannelRequest {
     string channel_name = 1;
     ChannelConfig config = 2;
     bytes genesis_block = 3;
+    string profile_name = 4;  // Profile name from configtx.yaml
+    string configtx_path = 5; // Path to configtx.yaml file
 }
 
 message ChannelResponse {

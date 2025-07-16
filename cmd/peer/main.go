@@ -20,6 +20,8 @@ var (
 	cliHandlers *peer.CLIHandlers
 )
 
+const defaultProfile = "testchannel0"
+
 // rootCmd는 peer의 루트 명령어를 나타냅니다
 var rootCmd = &cobra.Command{
 	Use:   "peer",
@@ -111,7 +113,10 @@ func initializePeer(cmd *cobra.Command, args []string) {
 
 func runChannelCreate(cmd *cobra.Command, args []string) {
 	channelName := args[0]
-	if err := cliHandlers.HandleChannelCreate(channelName, ordererAddress); err != nil {
+	// if err := cliHandlers.HandleChannelCreate(channelName, ordererAddress); err != nil {
+	// 	log.Fatalf("Failed to create channel: %v", err)
+	// }
+	if err := cliHandlers.HandleChannelCreateWithProfile(channelName, defaultProfile); err != nil {
 		log.Fatalf("Failed to create channel: %v", err)
 	}
 }

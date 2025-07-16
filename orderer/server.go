@@ -2,8 +2,11 @@ package orderer
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net"
+	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -75,7 +78,7 @@ func (s *OrdererServer) CreateChannel(ctx context.Context, req *pb.ChannelReques
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	logger.Infof("[Orderer] Creating channel: %s", req.ChannelName)
+	logger.Infof("[Orderer] Creating channel: %s with profile: %s", req.ChannelName, req.ProfileName)
 
 	// 채널이 이미 존재하는지 확인
 	if _, exists := s.orderer.channels[req.ChannelName]; exists {
@@ -83,6 +86,28 @@ func (s *OrdererServer) CreateChannel(ctx context.Context, req *pb.ChannelReques
 			Status:    pb.StatusCode_ALREADY_EXISTS,
 			Message:   fmt.Sprintf("Channel %s already exists", req.ChannelName),
 			ChannelId: req.ChannelName,
+		}, nil
+	}
+
+	// configtx.yaml 경로 설정 (기본값 사용)
+	configTxPath := req.ConfigtxPath
+	if configTxPath == "" {
+		configTxPath = "config/configtx.yaml"
+	}
+
+	// Profile 이름 설정 (기본값 사용)
+	profileName := req.ProfileName
+	if profileName == "" {
+		profileName = "OrgsChannel0" // 기본 채널 프로파일
+	}
+
+	// configtx.yaml에서 채널 구성 생성
+	channelConfig, err := s.createChannelFromProfile(configTxPath, profileName, req.ChannelName)
+	if err != nil {
+		logger.Errorf("Failed to create channel config from profile: %v", err)
+		return &pb.ChannelResponse{
+			Status:  pb.StatusCode_CONFIGURATION_ERROR,
+			Message: fmt.Sprintf("Failed to create channel config: %v", err),
 		}, nil
 	}
 
@@ -95,9 +120,16 @@ func (s *OrdererServer) CreateChannel(ctx context.Context, req *pb.ChannelReques
 
 	s.orderer.channels[req.ChannelName] = channel
 
+	// 채널 구성을 JSON 파일로 저장
+	if err := s.saveChannelConfig(req.ChannelName, channelConfig); err != nil {
+		logger.Errorf("Failed to save channel config: %v", err)
+		// 채널은 생성되었지만 설정 저장 실패는 경고로 처리
+	}
+
+	logger.Infof("Channel %s created successfully from profile %s", req.ChannelName, profileName)
 	return &pb.ChannelResponse{
 		Status:    pb.StatusCode_OK,
-		Message:   fmt.Sprintf("Channel %s created successfully", req.ChannelName),
+		Message:   fmt.Sprintf("Channel %s created successfully from profile %s", req.ChannelName, profileName),
 		ChannelId: req.ChannelName,
 	}, nil
 }
@@ -535,5 +567,71 @@ func (s *OrdererServer) StartWithContext(ctx context.Context, address string) er
 	s.server.GracefulStop()
 	logger.Info("Orderer server shut down complete")
 
+	return nil
+}
+
+// createChannelFromProfile creates channel configuration from configtx.yaml profile
+func (s *OrdererServer) createChannelFromProfile(configTxPath, profileName, channelName string) (map[string]interface{}, error) {
+	// configtx.yaml에서 GenesisConfig 생성
+	genesisConfig, err := CreateGenesisConfigFromConfigTx(configTxPath)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to load configtx.yaml")
+	}
+
+	// 채널 구성 생성
+	channelConfig := map[string]interface{}{
+		"channel_id":        channelName,
+		"profile_name":      profileName,
+		"consortium":        genesisConfig.ConsortiumName,
+		"organizations":     make([]map[string]interface{}, 0),
+		"orderer_endpoints": []string{"localhost:7050"},
+		"peer_endpoints":    []string{"localhost:7051"},
+		"policies": map[string]interface{}{
+			"Readers": "ANY Readers",
+			"Writers": "ANY Writers",
+			"Admins":  "ANY Admins",
+		},
+		"capabilities": map[string]bool{
+			"V2_0": true,
+		},
+		"created_at": time.Now().Format(time.RFC3339),
+	}
+
+	// Peer 조직 정보 추가
+	for _, org := range genesisConfig.PeerOrgs {
+		orgInfo := map[string]interface{}{
+			"name":    org.Name,
+			"msp_id":  org.ID,
+			"msp_dir": org.MSPDir,
+		}
+		channelConfig["organizations"] = append(channelConfig["organizations"].([]map[string]interface{}), orgInfo)
+	}
+
+	logger.Infof("Created channel config for %s using profile %s", channelName, profileName)
+	return channelConfig, nil
+}
+
+// saveChannelConfig saves channel configuration to JSON file
+func (s *OrdererServer) saveChannelConfig(channelName string, config map[string]interface{}) error {
+	// channels 디렉토리 생성
+	channelsDir := "channels"
+	if err := os.MkdirAll(channelsDir, 0755); err != nil {
+		return errors.Wrap(err, "failed to create channels directory")
+	}
+
+	// JSON 파일로 저장
+	fileName := fmt.Sprintf("%s.json", channelName)
+	filePath := filepath.Join(channelsDir, fileName)
+
+	data, err := json.MarshalIndent(config, "", "  ")
+	if err != nil {
+		return errors.Wrap(err, "failed to marshal channel config")
+	}
+
+	if err := os.WriteFile(filePath, data, 0644); err != nil {
+		return errors.Wrap(err, "failed to write channel config file")
+	}
+
+	logger.Infof("Channel config saved to %s", filePath)
 	return nil
 }

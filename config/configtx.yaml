@@ -53,7 +53,6 @@ Organizations:
           - Host: 127.0.0.1
             Port: 7051
 
-
 ################################################################################
 #
 #   SECTION: Application
@@ -153,3 +152,29 @@ Channel: &ChannelDefaults
             #Rule: "MAJORITY Admins"
             Rule: "ANY Writers"
 
+################################################################################
+#
+#   Profile
+#
+#   - Different configuration profiles may be encoded here to be specified
+#   as parameters to the configtxgen tool
+#
+################################################################################
+Profiles:
+    OrgsOrdererGenesis:
+        <<: *ChannelDefaults
+        Orderer:
+            <<: *OrdererDefaults
+            Organizations:
+                - *OrdererOrg
+        Consortiums:
+            SampleConsortium:
+                Organizations:
+                    - *Org1
+    testchannel0:
+        Consortium: SampleConsortium
+        <<: *ChannelDefaults
+        Application:
+            <<: *ApplicationDefaults
+            Organizations:
+                - *Org1

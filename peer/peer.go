@@ -116,10 +116,22 @@ func NewPeerWithMSPFiles(id string, chaincodePath string, mspID string, mspPath 
 	}
 }
 
-func (p *Peer) JoinChannel(channelName string) error {
+// JoinChannel joins an existing channel - channel must already exist
+func (p *Peer) JoinChannel(channelName string, ordererClient *OrdererClient) error {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
+	logger.Infof("[Peer] Joining channel: %s", channelName)
+
+	// 채널이 이미 존재하는지 확인
+	_, err := p.channelManager.GetChannel(channelName)
+	if err != nil {
+		// 채널이 존재하지 않으면 에러 반환 (채널 생성 요청하지 않음)
+		logger.Errorf("[Peer] Channel %s not found locally", channelName)
+		return errors.Errorf("channel %s does not exist - please create the channel first", channelName)
+	}
+
+	// 채널 가져오기
 	channel, err := p.channelManager.GetChannel(channelName)
 	if err != nil {
 		return errors.Wrap(err, "failed to get channel")
@@ -137,6 +149,44 @@ func (p *Peer) JoinChannel(channelName string) error {
 	channelMSP.Setup(config)
 	channel.MSP = channelMSP
 
+	logger.Infof("[Peer] Successfully joined channel: %s", channelName)
+	return nil
+}
+
+// JoinChannelWithProfile joins an existing channel with specific profile configuration
+func (p *Peer) JoinChannelWithProfile(channelName, profileName string, ordererClient *OrdererClient) error {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+
+	logger.Infof("[Peer] Joining channel: %s with profile: %s", channelName, profileName)
+
+	// 채널이 이미 존재하는지 확인
+	_, err := p.channelManager.GetChannel(channelName)
+	if err != nil {
+		// 채널이 존재하지 않으면 에러 반환 (채널 생성 요청하지 않음)
+		logger.Errorf("[Peer] Channel %s not found locally", channelName)
+		return errors.Errorf("channel %s does not exist - please create the channel first", channelName)
+	}
+
+	// 채널 가져오기
+	channel, err := p.channelManager.GetChannel(channelName)
+	if err != nil {
+		return errors.Wrap(err, "failed to get channel")
+	}
+
+	// 채널용 MSP 생성
+	channelMSP := msp.NewFabricMSP()
+	config := &msp.MSPConfig{
+		Name: fmt.Sprintf("%s.%s", p.mspID, channelName),
+		CryptoConfig: &msp.FabricCryptoConfig{
+			SignatureHashFamily:            "SHA2",
+			IdentityIdentifierHashFunction: "SHA256",
+		},
+	}
+	channelMSP.Setup(config)
+	channel.MSP = channelMSP
+
+	logger.Infof("[Peer] Successfully joined channel: %s with profile: %s", channelName, profileName)
 	return nil
 }
 
@@ -204,6 +254,50 @@ func (p *Peer) GetMSP() msp.MSP {
 // GetMSPID MSP ID 반환
 func (p *Peer) GetMSPID() string {
 	return p.mspID
+}
+
+// CreateChannel creates a channel via orderer and then creates it locally
+func (p *Peer) CreateChannel(channelName string, ordererClient *OrdererClient) error {
+	logger.Infof("[Peer] Creating channel: %s", channelName)
+
+	// 1. First, request channel creation from orderer
+	if ordererClient == nil {
+		return errors.New("orderer client is required for channel creation")
+	}
+
+	if err := ordererClient.CreateChannel(channelName); err != nil {
+		return errors.Wrapf(err, "failed to create channel %s via orderer", channelName)
+	}
+
+	// 2. Then create the channel locally
+	if err := p.channelManager.CreateChannel(channelName, "SampleConsortium", "localhost:7050"); err != nil {
+		return errors.Wrapf(err, "failed to create local channel %s", channelName)
+	}
+
+	logger.Infof("[Peer] Channel %s created successfully", channelName)
+	return nil
+}
+
+// CreateChannelWithProfile creates a channel with specific profile via orderer and then creates it locally
+func (p *Peer) CreateChannelWithProfile(channelName, profileName string, ordererClient *OrdererClient) error {
+	logger.Infof("[Peer] Creating channel: %s with profile: %s", channelName, profileName)
+
+	// 1. First, request channel creation from orderer with profile
+	if ordererClient == nil {
+		return errors.New("orderer client is required for channel creation")
+	}
+
+	if err := ordererClient.CreateChannelWithProfile(channelName, profileName, "config/configtx.yaml"); err != nil {
+		return errors.Wrapf(err, "failed to create channel %s via orderer with profile %s", channelName, profileName)
+	}
+
+	// 2. Then create the channel locally
+	if err := p.channelManager.CreateChannel(channelName, "SampleConsortium", "localhost:7050"); err != nil {
+		return errors.Wrapf(err, "failed to create local channel %s", channelName)
+	}
+
+	logger.Infof("[Peer] Channel %s created successfully with profile %s", channelName, profileName)
+	return nil
 }
 
 // GetChannelManager 채널 관리자 반환
