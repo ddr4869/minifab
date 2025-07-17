@@ -5,7 +5,9 @@ import (
 	"os"
 
 	"github.com/ddr4869/minifab/common/logger"
-	"github.com/ddr4869/minifab/peer"
+	"github.com/ddr4869/minifab/peer/cli"
+	"github.com/ddr4869/minifab/peer/client"
+	"github.com/ddr4869/minifab/peer/core"
 	"github.com/spf13/cobra"
 )
 
@@ -17,7 +19,7 @@ var (
 	mspPath        string
 
 	// 전역적으로 사용될 CLI 핸들러
-	cliHandlers *peer.CLIHandlers
+	cliHandlers *cli.Handlers
 )
 
 const defaultProfile = "testchannel0"
@@ -40,10 +42,10 @@ var channelCmd = &cobra.Command{
 
 // channelCreateCmd는 새로운 채널을 생성합니다
 var channelCreateCmd = &cobra.Command{
-	Use:   "create [channel-name]",
+	Use:   "create [channel-name] [profile-name]",
 	Short: "새로운 채널을 생성합니다",
 	Long:  `지정된 이름으로 새로운 채널을 생성하고 orderer에 알립니다.`,
-	Args:  cobra.ExactArgs(1),
+	Args:  cobra.ExactArgs(2),
 	Run:   runChannelCreate,
 }
 
@@ -99,24 +101,25 @@ func init() {
 // initializePeer는 모든 명령어 실행 전에 peer와 orderer client를 초기화합니다
 func initializePeer(cmd *cobra.Command, args []string) {
 	// Peer 인스턴스 생성 (fabric-ca 인증서 사용)
-	p := peer.NewPeerWithMSPFiles(peerID, chaincodePath, mspID, mspPath)
+	p := core.NewPeerWithMSPFiles(peerID, chaincodePath, mspID, mspPath)
 
 	// Orderer 클라이언트 생성
-	ordererClient, err := peer.NewOrdererClient(ordererAddress)
+	ordererClient, err := client.NewOrdererClient(ordererAddress)
 	if err != nil {
 		log.Fatalf("Failed to create orderer client: %v", err)
 	}
 
 	// CLI 핸들러 생성
-	cliHandlers = peer.NewCLIHandlers(p, ordererClient)
+	cliHandlers = cli.NewHandlers(p, ordererClient)
 }
 
 func runChannelCreate(cmd *cobra.Command, args []string) {
 	channelName := args[0]
-	// if err := cliHandlers.HandleChannelCreate(channelName, ordererAddress); err != nil {
-	// 	log.Fatalf("Failed to create channel: %v", err)
-	// }
-	if err := cliHandlers.HandleChannelCreateWithProfile(channelName, defaultProfile); err != nil {
+	profileName := args[1]
+	if profileName == "" {
+		profileName = defaultProfile
+	}
+	if err := cliHandlers.HandleChannelCreateWithProfile(channelName, profileName); err != nil {
 		log.Fatalf("Failed to create channel: %v", err)
 	}
 }
