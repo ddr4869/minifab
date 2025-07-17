@@ -3,6 +3,7 @@ package main_test
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -27,7 +28,11 @@ func TestProperChannelWorkflow(t *testing.T) {
 
 	go func() {
 		if err := ordererServer.StartWithContext(ctx, "localhost:7050"); err != nil {
-			t.Logf("Orderer server error: %v", err)
+			if strings.Contains(err.Error(), "address already in use") {
+				t.Log("Orderer server already running")
+				return
+			}
+			t.Errorf("Orderer server failed to start: %v", err)
 		}
 	}()
 

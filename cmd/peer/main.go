@@ -46,7 +46,16 @@ var channelCreateCmd = &cobra.Command{
 	Short: "새로운 채널을 생성합니다",
 	Long:  `지정된 이름으로 새로운 채널을 생성하고 orderer에 알립니다.`,
 	Args:  cobra.ExactArgs(2),
-	Run:   runChannelCreate,
+	Run: func(cmd *cobra.Command, args []string) {
+		channelName := args[0]
+		profileName := args[1]
+		if profileName == "" {
+			profileName = defaultProfile
+		}
+		if err := cliHandlers.HandleChannelCreateWithProfile(channelName, profileName); err != nil {
+			log.Fatalf("Failed to create channel: %v", err)
+		}
+	},
 }
 
 // channelJoinCmd는 기존 채널에 참여합니다
@@ -55,7 +64,12 @@ var channelJoinCmd = &cobra.Command{
 	Short: "기존 채널에 참여합니다",
 	Long:  `지정된 이름의 기존 채널에 이 peer를 참여시킵니다.`,
 	Args:  cobra.ExactArgs(1),
-	Run:   runChannelJoin,
+	Run: func(cmd *cobra.Command, args []string) {
+		channelName := args[0]
+		if err := cliHandlers.HandleChannelJoin(channelName); err != nil {
+			log.Fatalf("Failed to join channel: %v", err)
+		}
+	},
 }
 
 // channelListCmd는 사용 가능한 채널 목록을 보여줍니다
@@ -63,7 +77,11 @@ var channelListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "사용 가능한 채널 목록을 조회합니다",
 	Long:  `현재 peer가 알고 있는 모든 채널의 목록을 표시합니다.`,
-	Run:   runChannelList,
+	Run: func(cmd *cobra.Command, args []string) {
+		if err := cliHandlers.HandleChannelList(); err != nil {
+			log.Fatalf("Failed to list channels: %v", err)
+		}
+	},
 }
 
 // transactionCmd는 트랜잭션을 제출합니다
@@ -72,7 +90,13 @@ var transactionCmd = &cobra.Command{
 	Short: "지정된 채널에 트랜잭션을 제출합니다",
 	Long:  `지정된 채널에 새로운 트랜잭션을 생성하고 orderer에 제출합니다.`,
 	Args:  cobra.ExactArgs(2),
-	Run:   runTransaction,
+	Run: func(cmd *cobra.Command, args []string) {
+		channelName := args[0]
+		payload := []byte(args[1])
+		if err := cliHandlers.HandleTransaction(channelName, payload); err != nil {
+			log.Fatalf("Failed to submit transaction: %v", err)
+		}
+	},
 }
 
 func init() {
@@ -111,38 +135,6 @@ func initializePeer(cmd *cobra.Command, args []string) {
 
 	// CLI 핸들러 생성
 	cliHandlers = cli.NewHandlers(p, ordererClient)
-}
-
-func runChannelCreate(cmd *cobra.Command, args []string) {
-	channelName := args[0]
-	profileName := args[1]
-	if profileName == "" {
-		profileName = defaultProfile
-	}
-	if err := cliHandlers.HandleChannelCreateWithProfile(channelName, profileName); err != nil {
-		log.Fatalf("Failed to create channel: %v", err)
-	}
-}
-
-func runChannelJoin(cmd *cobra.Command, args []string) {
-	channelName := args[0]
-	if err := cliHandlers.HandleChannelJoin(channelName); err != nil {
-		log.Fatalf("Failed to join channel: %v", err)
-	}
-}
-
-func runChannelList(cmd *cobra.Command, args []string) {
-	if err := cliHandlers.HandleChannelList(); err != nil {
-		log.Fatalf("Failed to list channels: %v", err)
-	}
-}
-
-func runTransaction(cmd *cobra.Command, args []string) {
-	channelName := args[0]
-	payload := []byte(args[1])
-	if err := cliHandlers.HandleTransaction(channelName, payload); err != nil {
-		log.Fatalf("Failed to submit transaction: %v", err)
-	}
 }
 
 func main() {

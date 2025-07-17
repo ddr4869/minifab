@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -32,7 +33,11 @@ func TestChannelCreationWithProfile(t *testing.T) {
 
 	go func() {
 		if err := ordererServer.Start(":7050"); err != nil {
-			t.Errorf("Orderer server failed to start: %v", err)
+			if strings.Contains(err.Error(), "address already in use") {
+				t.Log("Orderer server already running")
+				return
+			}
+			t.Errorf("❌ Orderer server failed to start: %v", err)
 		}
 	}()
 
@@ -69,18 +74,18 @@ func TestChannelCreationWithProfile(t *testing.T) {
 
 	channelConfigPath := "channels/" + channelName + ".json"
 	if _, err := os.Stat(channelConfigPath); os.IsNotExist(err) {
-		t.Errorf("Channel config file not found: %s", channelConfigPath)
+		t.Errorf("❌ Channel config file not found: %s", channelConfigPath)
 	} else {
 		t.Logf("✅ Channel config file created: %s", channelConfigPath)
 
 		// Read and validate the configuration
 		configData, err := os.ReadFile(channelConfigPath)
 		if err != nil {
-			t.Errorf("Failed to read channel config: %v", err)
+			t.Errorf("❌ Failed to read channel config: %v", err)
 		} else {
 			var config map[string]interface{}
 			if err := json.Unmarshal(configData, &config); err != nil {
-				t.Errorf("Invalid JSON in channel config: %v", err)
+				t.Errorf("❌ Invalid JSON in channel config: %v", err)
 			} else {
 				t.Log("✅ Channel configuration is valid JSON")
 				t.Logf("Channel config: %v", config)
@@ -104,7 +109,7 @@ func TestChannelCreationWithProfile(t *testing.T) {
 
 		err := ordererClient.CreateChannelWithProfile(ch.name, ch.profile, configTxPath)
 		if err != nil {
-			t.Errorf("Failed to create channel %s: %v", ch.name, err)
+			t.Errorf("❌ Failed to create channel %s: %v", ch.name, err)
 		} else {
 			t.Logf("✅ Channel '%s' created successfully", ch.name)
 		}
@@ -112,7 +117,7 @@ func TestChannelCreationWithProfile(t *testing.T) {
 		// Verify config file exists
 		configPath := "channels/" + ch.name + ".json"
 		if _, err := os.Stat(configPath); os.IsNotExist(err) {
-			t.Errorf("Config file not found for channel %s", ch.name)
+			t.Errorf("❌ Config file not found for channel %s", ch.name)
 		}
 	}
 
@@ -146,7 +151,7 @@ func TestChannelCreationWithProfile(t *testing.T) {
 		channelName := fmt.Sprintf("perfchannel%d", i)
 		err := ordererClient.CreateChannelWithProfile(channelName, "TwoOrgsChannel", configTxPath)
 		if err != nil {
-			t.Errorf("Failed to create performance channel %d: %v", i, err)
+			t.Errorf("❌ Failed to create performance channel %d: %v", i, err)
 		}
 	}
 

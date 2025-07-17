@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -24,7 +25,11 @@ func TestFullChannelCreation(t *testing.T) {
 
 	go func() {
 		if err := ordererServer.Start(":7050"); err != nil {
-			t.Errorf("Orderer server failed to start: %v", err)
+			if strings.Contains(err.Error(), "address already in use") {
+				t.Log("Orderer server already running")
+				return
+			}
+			t.Errorf("Orderer server failed to st	art: %v", err)
 		}
 	}()
 

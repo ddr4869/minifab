@@ -2,12 +2,14 @@ package cli
 
 import (
 	"github.com/ddr4869/minifab/common/logger"
+	"github.com/ddr4869/minifab/peer/channel"
 	"github.com/ddr4869/minifab/peer/client"
 	"github.com/ddr4869/minifab/peer/core"
 	"github.com/pkg/errors"
 )
 
-// Handlers CLI 명령어 핸들러들을 관리하는 구조체
+var CliHandlers *Handlers
+
 type Handlers struct {
 	peer          *core.Peer
 	ordererClient *client.OrdererClient
@@ -15,52 +17,56 @@ type Handlers struct {
 
 // NewHandlers CLI 핸들러 생성
 func NewHandlers(peer *core.Peer, ordererClient *client.OrdererClient) *Handlers {
-	return &Handlers{
+	CliHandlers = &Handlers{
 		peer:          peer,
 		ordererClient: ordererClient,
 	}
+	return CliHandlers
 }
 
-// HandleChannelCreate 채널 생성 명령어 처리
+// ensureChannelManagerInitialized는 채널 관련 작업 전에 channelManager가 초기화되어 있는지 확인합니다
+func (h *Handlers) ensureChannelManagerInitialized() error {
+	return channel.EnsureChannelManagerInitialized(h.peer)
+}
+
+// HandleChannelCreate 채널 생성 명령어 처리 - 단순히 peer의 메서드를 호출
 func (h *Handlers) HandleChannelCreate(channelName string, ordererAddress string) error {
-	// 채널 생성 (orderer를 통한 새로운 로직 사용)
-	if err := h.peer.CreateChannel(channelName, h.ordererClient); err != nil {
-		return errors.Wrap(err, "failed to create channel")
+	if err := h.ensureChannelManagerInitialized(); err != nil {
+		return errors.Wrap(err, "failed to initialize channel manager")
 	}
-	logger.Infof("Channel %s created successfully", channelName)
-	return nil
+	return h.peer.CreateChannel(channelName, h.ordererClient)
 }
 
-// HandleChannelCreateWithProfile 프로파일을 사용한 채널 생성 명령어 처리
+// HandleChannelCreateWithProfile 프로파일을 사용한 채널 생성 명령어 처리 - 단순히 peer의 메서드를 호출
 func (h *Handlers) HandleChannelCreateWithProfile(channelName, profileName string) error {
-	// 채널 생성 (orderer를 통한 프로파일 기반 로직 사용)
-	if err := h.peer.CreateChannelWithProfile(channelName, profileName, h.ordererClient); err != nil {
-		return errors.Wrap(err, "failed to create channel with profile")
+	if err := h.ensureChannelManagerInitialized(); err != nil {
+		return errors.Wrap(err, "failed to initialize channel manager")
 	}
-	logger.Infof("Channel %s created successfully with profile %s", channelName, profileName)
-	return nil
+	return h.peer.CreateChannelWithProfile(channelName, profileName, h.ordererClient)
 }
 
-// HandleChannelJoin 채널 참여 명령어 처리
+// HandleChannelJoin 채널 참여 명령어 처리 - 단순히 peer의 메서드를 호출
 func (h *Handlers) HandleChannelJoin(channelName string) error {
-	if err := h.peer.JoinChannel(channelName, h.ordererClient); err != nil {
-		return errors.Wrap(err, "failed to join channel")
+	if err := h.ensureChannelManagerInitialized(); err != nil {
+		return errors.Wrap(err, "failed to initialize channel manager")
 	}
-	logger.Infof("Successfully joined channel %s", channelName)
-	return nil
+	return h.peer.JoinChannel(channelName, h.ordererClient)
 }
 
-// HandleChannelJoinWithProfile 프로파일을 사용한 채널 참여 명령어 처리
+// HandleChannelJoinWithProfile 프로파일을 사용한 채널 참여 명령어 처리 - 단순히 peer의 메서드를 호출
 func (h *Handlers) HandleChannelJoinWithProfile(channelName, profileName string) error {
-	if err := h.peer.JoinChannelWithProfile(channelName, profileName, h.ordererClient); err != nil {
-		return errors.Wrap(err, "failed to join channel with profile")
+	if err := h.ensureChannelManagerInitialized(); err != nil {
+		return errors.Wrap(err, "failed to initialize channel manager")
 	}
-	logger.Infof("Successfully joined channel %s with profile %s", channelName, profileName)
-	return nil
+	return h.peer.JoinChannelWithProfile(channelName, profileName, h.ordererClient)
 }
 
-// HandleChannelList 채널 목록 조회 명령어 처리
+// HandleChannelList 채널 목록 조회 명령어 처리 - 단순히 peer의 메서드를 호출
 func (h *Handlers) HandleChannelList() error {
+	if err := h.ensureChannelManagerInitialized(); err != nil {
+		return errors.Wrap(err, "failed to initialize channel manager")
+	}
+
 	channels := h.peer.GetChannelManager().ListChannels()
 	if len(channels) == 0 {
 		logger.Info("No channels found")
@@ -75,6 +81,10 @@ func (h *Handlers) HandleChannelList() error {
 
 // HandleTransaction 트랜잭션 처리 명령어
 func (h *Handlers) HandleTransaction(channelName string, payload []byte) error {
+	if err := h.ensureChannelManagerInitialized(); err != nil {
+		return errors.Wrap(err, "failed to initialize channel manager")
+	}
+
 	// 트랜잭션 생성 및 제출
 	tx, err := h.peer.SubmitTransaction(channelName, payload)
 	if err != nil {
