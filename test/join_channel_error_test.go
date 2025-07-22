@@ -3,7 +3,6 @@ package main_test
 import (
 	"testing"
 
-	"github.com/ddr4869/minifab/peer/channel"
 	"github.com/ddr4869/minifab/peer/client"
 	"github.com/ddr4869/minifab/peer/core"
 )
@@ -11,21 +10,18 @@ import (
 func TestJoinChannelError(t *testing.T) {
 	t.Log("Testing JoinChannel Error Handling")
 
-	// Create peer
-	peerInstance := core.NewPeer("peer0", "./chaincode", "Org1MSP")
+	// Test 1: Try to connect to orderer first
+	t.Log("\n1. Testing orderer connection...")
 
-	// Create channel manager and set it
-	channelManager := channel.NewManager()
-	peerInstance.SetChannelManager(channelManager)
-
-	// Test 1: Try to join a non-existent channel
-	t.Log("\n1. Testing join non-existent channel...")
-
-	// Create a mock orderer client (this will fail in real scenario)
+	// Create orderer client (this may fail in test environment)
 	ordererClient, err := client.NewOrdererClient("localhost:7050")
 	if err != nil {
 		t.Log("Note: Could not connect to orderer (expected for this test)")
 		t.Log("✅ Testing without orderer connection")
+
+		// Create peer without orderer client (using nil for testing)
+		// Note: In production, this would not be allowed, but for testing error scenarios
+		peerInstance := core.NewPeer("peer0", "./chaincode", "Org1MSP", nil)
 
 		// Test error handling when channel manager is not properly initialized
 		t.Log("\n2. Testing channel manager error handling...")
@@ -46,6 +42,23 @@ func TestJoinChannelError(t *testing.T) {
 			t.Errorf("Expected empty channel list, got %d channels", len(channels))
 		}
 
+		// Test operations with nil orderer client
+		t.Log("\n3. Testing operations with nil orderer client...")
+
+		err = peerInstance.JoinChannel("test-channel")
+		if err != nil {
+			t.Logf("✅ Properly handled nil orderer client in JoinChannel: %v", err)
+		} else {
+			t.Error("Expected error with nil orderer client, but succeeded")
+		}
+
+		err = peerInstance.CreateChannel("test-channel")
+		if err != nil {
+			t.Logf("✅ Properly handled nil orderer client in CreateChannel: %v", err)
+		} else {
+			t.Error("Expected error with nil orderer client, but succeeded")
+		}
+
 		return
 	}
 	defer ordererClient.Close()
@@ -53,8 +66,11 @@ func TestJoinChannelError(t *testing.T) {
 	// If we successfully connected, test actual join scenarios
 	t.Log("✅ Connected to orderer")
 
+	// Create peer with orderer client
+	peerInstance := core.NewPeerWithMSPFiles("peer0", "./chaincode", "Org1MSP", "ca/ca-client/peer0", ordererClient)
+
 	// Test with non-existent channel
-	err = peerInstance.JoinChannel("nonexistent-channel", ordererClient)
+	err = peerInstance.JoinChannel("nonexistent-channel")
 	if err != nil {
 		t.Logf("✅ Properly rejected join to non-existent channel: %v", err)
 	} else {
@@ -67,14 +83,14 @@ func TestJoinChannelError(t *testing.T) {
 	channelName := "testchannel"
 
 	// Create channel first
-	err = peerInstance.CreateChannel(channelName, ordererClient)
+	err = peerInstance.CreateChannel(channelName)
 	if err != nil {
 		t.Errorf("Failed to create channel: %v", err)
 	} else {
 		t.Log("✅ Channel created successfully")
 
 		// Now try to join the channel
-		err = peerInstance.JoinChannel(channelName, ordererClient)
+		err = peerInstance.JoinChannel(channelName)
 		if err != nil {
 			t.Errorf("Failed to join existing channel: %v", err)
 		} else {
@@ -86,28 +102,18 @@ func TestJoinChannelError(t *testing.T) {
 	t.Log("\n3. Testing multiple join attempts...")
 
 	// Try joining the same channel again
-	err = peerInstance.JoinChannel(channelName, ordererClient)
+	err = peerInstance.JoinChannel(channelName)
 	if err != nil {
 		t.Logf("Note: Multiple join attempts handled: %v", err)
 	} else {
 		t.Log("✅ Multiple join attempts allowed (may be expected behavior)")
 	}
 
-	// Test 4: Test with nil orderer client
-	t.Log("\n4. Testing with nil orderer client...")
-
-	err = peerInstance.JoinChannel(channelName, nil)
-	if err != nil {
-		t.Logf("✅ Properly handled nil orderer client: %v", err)
-	} else {
-		t.Error("Expected error with nil orderer client, but succeeded")
-	}
-
-	// Test 5: Test channel validation
-	t.Log("\n5. Testing channel validation...")
+	// Test 4: Test channel validation
+	t.Log("\n4. Testing channel validation...")
 
 	// Test empty channel name
-	err = peerInstance.JoinChannel("", ordererClient)
+	err = peerInstance.JoinChannel("")
 	if err != nil {
 		t.Logf("✅ Properly rejected empty channel name: %v", err)
 	} else {
@@ -124,7 +130,7 @@ func TestJoinChannelError(t *testing.T) {
 
 	for _, invalidName := range invalidNames {
 		t.Logf("Testing invalid channel name: '%s'", invalidName)
-		err = peerInstance.JoinChannel(invalidName, ordererClient)
+		err = peerInstance.JoinChannel(invalidName)
 		if err != nil {
 			t.Logf("✅ Properly rejected invalid name '%s': %v", invalidName, err)
 		} else {
@@ -132,14 +138,14 @@ func TestJoinChannelError(t *testing.T) {
 		}
 	}
 
-	// Test 6: Test concurrent join attempts
-	t.Log("\n6. Testing concurrent join attempts...")
+	// Test 5: Test concurrent join attempts
+	t.Log("\n5. Testing concurrent join attempts...")
 
 	// Create multiple channels for concurrent testing
 	testChannels := []string{"concurrent1", "concurrent2", "concurrent3"}
 
 	for _, ch := range testChannels {
-		err := peerInstance.CreateChannel(ch, ordererClient)
+		err := peerInstance.CreateChannel(ch)
 		if err != nil {
 			t.Errorf("Failed to create test channel %s: %v", ch, err)
 		}
@@ -150,7 +156,7 @@ func TestJoinChannelError(t *testing.T) {
 
 	for _, ch := range testChannels {
 		go func(channelName string) {
-			err := peerInstance.JoinChannel(channelName, ordererClient)
+			err := peerInstance.JoinChannel(channelName)
 			results <- err
 		}(ch)
 	}
@@ -168,8 +174,8 @@ func TestJoinChannelError(t *testing.T) {
 
 	t.Logf("✅ Concurrent joins: %d/%d successful", successCount, len(testChannels))
 
-	// Test 7: Resource cleanup test
-	t.Log("\n7. Testing resource cleanup...")
+	// Test 6: Resource cleanup test
+	t.Log("\n6. Testing resource cleanup...")
 
 	// Check if we can list all channels after all operations
 	allChannels := peerInstance.GetChannelManager().GetChannelNames()
@@ -179,8 +185,8 @@ func TestJoinChannelError(t *testing.T) {
 		t.Logf("   %d. %s", i+1, ch)
 	}
 
-	// Test 8: Memory usage after operations
-	t.Log("\n8. Checking memory usage...")
+	// Test 7: Memory usage after operations
+	t.Log("\n7. Checking memory usage...")
 
 	// Try to get details of each channel
 	for _, chName := range allChannels {

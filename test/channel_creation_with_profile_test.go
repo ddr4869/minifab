@@ -16,15 +16,12 @@ import (
 func TestChannelCreationWithProfile(t *testing.T) {
 	t.Log("Testing Channel Creation with Profile")
 
-	// Test 1: Create orderer and peer instances
+	// Test 1: Create orderer instance
 	t.Log("\n1. Creating orderer instance...")
 
 	// Create orderer
 	ord := orderer.NewOrderer("OrdererMSP")
 	ordererServer := orderer.NewOrdererServer(ord)
-
-	// Note: peer instance not needed for this test
-	_ = core.NewPeer("peer0", "./chaincode", "Org1MSP")
 
 	t.Log("✅ Orderer instance created")
 
@@ -42,6 +39,7 @@ func TestChannelCreationWithProfile(t *testing.T) {
 	}()
 
 	// Wait for server to start
+	time.Sleep(2 * time.Second)
 	t.Log("✅ Orderer server started")
 
 	// Test 3: Connect orderer client
@@ -54,6 +52,9 @@ func TestChannelCreationWithProfile(t *testing.T) {
 	defer ordererClient.Close()
 
 	t.Log("✅ Connected to orderer")
+
+	// Create peer instance if needed for future tests
+	_ = core.NewPeer("peer0", "./chaincode", "Org1MSP", ordererClient)
 
 	// Test 4: Create channel with profile
 	t.Log("\n4. Creating channel with profile...")

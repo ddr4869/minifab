@@ -7,7 +7,7 @@ import (
 
 	"github.com/ddr4869/minifab/common/types"
 	"github.com/ddr4869/minifab/orderer"
-	"github.com/ddr4869/minifab/peer/client"
+	"github.com/ddr4869/minifab/peer/common"
 	"github.com/ddr4869/minifab/peer/core"
 	"github.com/ddr4869/minifab/peer/server"
 )
@@ -15,21 +15,17 @@ import (
 func TestBlockBroadcasting(t *testing.T) {
 	t.Log("Testing Block Broadcasting System")
 
-	// Test 1: Create orderer and peer
-	t.Log("1. Creating orderer and peer instances...")
+	// Test 1: Create orderer
+	t.Log("1. Creating orderer instance...")
 
 	// Create orderer
 	ord := orderer.NewOrderer("OrdererMSP")
 	ordererServer := orderer.NewOrdererServer(ord)
 
-	// Create peer
-	peerInstance := core.NewPeer("peer0", "./chaincode", "Org1MSP")
-	peerServer := server.NewPeerServer(peerInstance)
+	t.Log("✅ Orderer instance created")
 
-	t.Log("✅ Orderer and peer instances created")
-
-	// Test 2: Start servers
-	t.Log("\n2. Starting servers...")
+	// Test 2: Start orderer server
+	t.Log("\n2. Starting orderer server...")
 
 	// Start orderer server
 	go func() {
@@ -42,6 +38,29 @@ func TestBlockBroadcasting(t *testing.T) {
 		}
 	}()
 
+	// Wait for orderer to start
+	time.Sleep(2 * time.Second)
+	t.Log("✅ Orderer server started")
+
+	// Test 3: Create orderer client and peer
+	t.Log("\n3. Creating orderer client and peer...")
+
+	// Connect to orderer as a client
+	ordererClient, err := common.NewOrdererClient("localhost:7050")
+	if err != nil {
+		t.Fatalf("Failed to create orderer client: %v", err)
+	}
+	defer ordererClient.Close()
+
+	// Create peer with orderer client
+	peerInstance := core.NewPeer("peer0", "./chaincode", "Org1MSP", ordererClient)
+	peerServer := server.NewPeerServer(peerInstance)
+
+	t.Log("✅ Orderer client and peer instances created")
+
+	// Test 4: Start peer server
+	t.Log("\n4. Starting peer server...")
+
 	// Start peer server
 	go func() {
 		if err := peerServer.Start(":7051"); err != nil {
@@ -49,19 +68,12 @@ func TestBlockBroadcasting(t *testing.T) {
 		}
 	}()
 
-	// Wait for servers to start
-	time.Sleep(2 * time.Second)
-	t.Log("✅ Servers started")
+	// Wait for peer server to start
+	time.Sleep(1 * time.Second)
+	t.Log("✅ Peer server started")
 
-	// Test 3: Create channel
-	t.Log("\n3. Creating channel...")
-
-	// Connect to orderer as a client
-	ordererClient, err := client.NewOrdererClient("localhost:7050")
-	if err != nil {
-		t.Fatalf("Failed to create orderer client: %v", err)
-	}
-	defer ordererClient.Close()
+	// Test 5: Create channel
+	t.Log("\n5. Creating channel...")
 
 	// Create channel
 	if err := ordererClient.CreateChannel("testchannel"); err != nil {
@@ -70,8 +82,8 @@ func TestBlockBroadcasting(t *testing.T) {
 
 	t.Log("✅ Channel created successfully")
 
-	// Test 4: Create and validate block
-	t.Log("\n4. Creating and validating block...")
+	// Test 6: Create and validate block
+	t.Log("\n6. Creating and validating block...")
 
 	// Create a block with transaction data
 	block, err := ord.CreateBlock([]byte("test block data"))
@@ -81,8 +93,8 @@ func TestBlockBroadcasting(t *testing.T) {
 
 	t.Logf("✅ Block created with number: %d", block.Number)
 
-	// Test 5: Submit transactions through peer
-	t.Log("\n5. Testing transaction submission...")
+	// Test 7: Submit transactions through peer
+	t.Log("\n7. Testing transaction submission...")
 
 	// Submit a transaction through peer
 	tx := &types.Transaction{
@@ -98,8 +110,8 @@ func TestBlockBroadcasting(t *testing.T) {
 		t.Log("✅ Transaction submitted successfully")
 	}
 
-	// Test 6: Performance test
-	t.Log("\n6. Running performance test...")
+	// Test 8: Performance test
+	t.Log("\n8. Running performance test...")
 
 	start := time.Now()
 	numTransactions := 10
@@ -121,8 +133,8 @@ func TestBlockBroadcasting(t *testing.T) {
 	t.Logf("✅ Submitted %d transactions in %v", numTransactions, duration)
 	t.Logf("✅ Average: %v per transaction", duration/time.Duration(numTransactions))
 
-	// Test 7: Block creation performance
-	t.Log("\n7. Testing block creation performance...")
+	// Test 9: Block creation performance
+	t.Log("\n9. Testing block creation performance...")
 
 	start = time.Now()
 	numBlocks := 5

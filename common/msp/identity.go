@@ -9,15 +9,33 @@ import (
 	"github.com/pkg/errors"
 )
 
-// identity MSP Identity 구현
+type IdentityIdentifier struct {
+	Mspid string
+	Id    string
+}
+
 type identity struct {
-	msp  *FabricMSP
 	id   *IdentityIdentifier
 	cert *x509.Certificate
 	pk   crypto.PublicKey
 }
 
-// GetIdentifier Identity 식별자 반환
+type SerializedIdentity struct {
+	Mspid   string
+	IdBytes []byte
+}
+
+func NewIdentity(cert *x509.Certificate, pk crypto.PublicKey, mspID string) *identity {
+	return &identity{
+		cert: cert,
+		pk:   pk,
+		id: &IdentityIdentifier{
+			Mspid: mspID,
+			Id:    cert.Subject.CommonName, // check this
+		},
+	}
+}
+
 func (id *identity) GetIdentifier() *IdentityIdentifier {
 	return id.id
 }
@@ -29,9 +47,6 @@ func (id *identity) GetMSPIdentifier() string {
 
 // Validate Identity 검증
 func (id *identity) Validate() error {
-	if id.msp == nil {
-		return errors.New("MSP cannot be nil")
-	}
 	if id.id == nil {
 		return errors.New("identity identifier cannot be nil")
 	}
@@ -123,17 +138,4 @@ func (id *identity) satisfiesOU(ouBytes []byte) error {
 func (id *identity) satisfiesIdentity(identityBytes []byte) error {
 	// 실제 구현에서는 Identity 정보를 파싱하여 확인
 	return nil
-}
-
-// NewIdentity Identity 생성
-func NewIdentity(msp *FabricMSP, cert *x509.Certificate, pk crypto.PublicKey, mspID string) *identity {
-	return &identity{
-		msp:  msp,
-		cert: cert,
-		pk:   pk,
-		id: &IdentityIdentifier{
-			Mspid: mspID,
-			Id:    cert.Subject.CommonName,
-		},
-	}
 }

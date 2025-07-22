@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/ddr4869/minifab/orderer"
-	"github.com/ddr4869/minifab/peer/channel"
 	"github.com/ddr4869/minifab/peer/client"
 	"github.com/ddr4869/minifab/peer/core"
 )
@@ -37,19 +36,8 @@ func TestFullChannelCreation(t *testing.T) {
 	time.Sleep(2 * time.Second)
 	t.Log("✅ Orderer server started")
 
-	// Test 2: Create peer with MSP
-	t.Log("\n2. Creating peer with MSP...")
-
-	peer := core.NewPeerWithMSPFiles("peer0", "./chaincode", "Org1MSP", "ca/ca-client/peer0")
-
-	// Create channel manager
-	channelManager := channel.NewManager()
-	peer.SetChannelManager(channelManager)
-
-	t.Log("✅ Peer created with MSP and channel manager")
-
-	// Test 3: Create orderer client
-	t.Log("\n3. Creating orderer client...")
+	// Test 2: Create orderer client
+	t.Log("\n2. Creating orderer client...")
 
 	ordererClient, err := client.NewOrdererClient("localhost:7050")
 	if err != nil {
@@ -59,11 +47,18 @@ func TestFullChannelCreation(t *testing.T) {
 
 	t.Log("✅ Orderer client created")
 
+	// Test 3: Create peer with MSP and orderer client
+	t.Log("\n3. Creating peer with MSP and orderer client...")
+
+	peer := core.NewPeerWithMSPFiles("peer0", "./chaincode", "Org1MSP", "ca/ca-client/peer0", ordererClient)
+
+	t.Log("✅ Peer created with MSP, orderer client and channel manager")
+
 	// Test 4: Create channel through peer
 	t.Log("\n4. Creating channel through peer...")
 
 	channelName := "mychannel"
-	err = peer.CreateChannel(channelName, ordererClient)
+	err = peer.CreateChannel(channelName)
 	if err != nil {
 		t.Fatalf("Failed to create channel through peer: %v", err)
 	}
@@ -84,7 +79,7 @@ func TestFullChannelCreation(t *testing.T) {
 	// Test 6: Join channel
 	t.Log("\n6. Testing channel join...")
 
-	err = peer.JoinChannel(channelName, ordererClient)
+	err = peer.JoinChannel(channelName)
 	if err != nil {
 		t.Errorf("Failed to join channel: %v", err)
 	} else {
@@ -123,7 +118,7 @@ func TestFullChannelCreation(t *testing.T) {
 	for _, ch := range channels {
 		t.Logf("Creating channel: %s", ch)
 
-		err := peer.CreateChannel(ch, ordererClient)
+		err := peer.CreateChannel(ch)
 		if err != nil {
 			t.Errorf("Failed to create channel %s: %v", ch, err)
 		} else {

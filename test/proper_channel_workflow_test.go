@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/ddr4869/minifab/orderer"
-	"github.com/ddr4869/minifab/peer/cli"
 	"github.com/ddr4869/minifab/peer/client"
 	"github.com/ddr4869/minifab/peer/core"
 )
@@ -40,10 +39,8 @@ func TestProperChannelWorkflow(t *testing.T) {
 	time.Sleep(2 * time.Second)
 	t.Log("✅ Orderer server started on localhost:7050")
 
-	// Test 2: Create peer and connect to orderer
-	t.Log("\n2. Creating peer and connecting to orderer...")
-
-	peerInstance := core.NewPeer("peer0", "./chaincode", "Org1MSP")
+	// Test 2: Create orderer client and peer
+	t.Log("\n2. Creating orderer client and peer...")
 
 	ordererClient, err := client.NewOrdererClient("localhost:7050")
 	if err != nil {
@@ -51,12 +48,14 @@ func TestProperChannelWorkflow(t *testing.T) {
 	}
 	defer ordererClient.Close()
 
+	peerInstance := core.NewPeerWithMSPFiles("peer0", "./chaincode", "Org1MSP", "ca/ca-client/peer0", ordererClient)
+
 	t.Log("✅ Peer connected to orderer")
 
 	// Test 3: Try to join non-existent channel (should fail)
 	t.Log("\n3. Testing join non-existent channel (should fail)...")
 
-	err = peerInstance.JoinChannel("nonexistent-channel", ordererClient)
+	err = peerInstance.JoinChannel("nonexistent-channel")
 	if err != nil {
 		t.Logf("✅ Expected error: %v", err)
 	} else {
@@ -67,7 +66,7 @@ func TestProperChannelWorkflow(t *testing.T) {
 	t.Log("\n4. Creating channel via peer (using orderer)...")
 
 	channelName := fmt.Sprintf("testchannel-%d", time.Now().UnixNano())
-	err = peerInstance.CreateChannelWithProfile(channelName, "OrgsChannel0", ordererClient)
+	err = peerInstance.CreateChannelWithProfile(channelName, "OrgsChannel0")
 	if err != nil {
 		t.Fatalf("Failed to create channel: %v", err)
 	}
@@ -77,7 +76,7 @@ func TestProperChannelWorkflow(t *testing.T) {
 	// Test 5: Now join the created channel (should succeed)
 	t.Log("\n5. Joining the created channel...")
 
-	err = peerInstance.JoinChannel(channelName, ordererClient)
+	err = peerInstance.JoinChannel(channelName)
 	if err != nil {
 		t.Fatalf("Failed to join channel: %v", err)
 	}
@@ -88,7 +87,7 @@ func TestProperChannelWorkflow(t *testing.T) {
 	t.Log("\n6. Creating second channel...")
 
 	channelName2 := fmt.Sprintf("mychannel-%d", time.Now().UnixNano())
-	err = peerInstance.CreateChannel(channelName2, ordererClient)
+	err = peerInstance.CreateChannel(channelName2)
 	if err != nil {
 		t.Fatalf("Failed to create second channel: %v", err)
 	}
@@ -98,7 +97,7 @@ func TestProperChannelWorkflow(t *testing.T) {
 	// Test 7: Join second channel
 	t.Log("\n7. Joining second channel...")
 
-	err = peerInstance.JoinChannel(channelName2, ordererClient)
+	err = peerInstance.JoinChannel(channelName2)
 	if err != nil {
 		t.Fatalf("Failed to join second channel: %v", err)
 	}
@@ -117,25 +116,23 @@ func TestProperChannelWorkflow(t *testing.T) {
 	peerChannels := peerInstance.GetChannelManager().ListChannels()
 	t.Logf("📋 Peer channels: %v", peerChannels)
 
-	// Test 9: Test CLI handlers
-	t.Log("\n9. Testing CLI handlers...")
+	// Test 9: Direct peer method testing
+	t.Log("\n9. Testing direct peer methods...")
 
-	cliHandlers := cli.NewHandlers(peerInstance, ordererClient)
-
-	// Create channel via CLI handler
-	channelName3 := fmt.Sprintf("cli-channel-%d", time.Now().UnixNano())
-	err = cliHandlers.HandleChannelCreateWithProfile(channelName3, "OrgsChannel0")
+	// Create channel via peer directly
+	channelName3 := fmt.Sprintf("direct-channel-%d", time.Now().UnixNano())
+	err = peerInstance.CreateChannelWithProfile(channelName3, "OrgsChannel0")
 	if err != nil {
-		t.Logf("CLI channel creation failed: %v", err)
+		t.Logf("Direct channel creation failed: %v", err)
 	} else {
-		t.Logf("✅ CLI channel creation successful: %s", channelName3)
+		t.Logf("✅ Direct channel creation successful: %s", channelName3)
 
-		// Join via CLI handler
-		err = cliHandlers.HandleChannelJoin(channelName3)
+		// Join via peer directly
+		err = peerInstance.JoinChannel(channelName3)
 		if err != nil {
-			t.Logf("CLI channel join failed: %v", err)
+			t.Logf("Direct channel join failed: %v", err)
 		} else {
-			t.Logf("✅ CLI channel join successful: %s", channelName3)
+			t.Logf("✅ Direct channel join successful: %s", channelName3)
 		}
 	}
 
@@ -166,7 +163,7 @@ func TestProperChannelWorkflow(t *testing.T) {
 
 	// Measure channel creation time
 	createStart := time.Now()
-	err = peerInstance.CreateChannel(quickChannelName, ordererClient)
+	err = peerInstance.CreateChannel(quickChannelName)
 	createDuration := time.Since(createStart)
 
 	if err != nil {
@@ -176,7 +173,7 @@ func TestProperChannelWorkflow(t *testing.T) {
 
 		// Measure join time
 		joinStart := time.Now()
-		err = peerInstance.JoinChannel(quickChannelName, ordererClient)
+		err = peerInstance.JoinChannel(quickChannelName)
 		joinDuration := time.Since(joinStart)
 
 		if err != nil {
@@ -201,16 +198,16 @@ func TestProperChannelWorkflow(t *testing.T) {
 
 	t.Log("\n🎉 Proper Channel Workflow Test Complete!")
 	t.Log("\nKey Achievements:")
-	t.Log("✅ Peer creates channels via orderer client (gRPC)")
+	t.Log("✅ Peer creates channels via embedded orderer client (gRPC)")
 	t.Log("✅ Orderer processes channel creation with profiles")
 	t.Log("✅ JoinChannel fails for non-existent channels")
 	t.Log("✅ JoinChannel succeeds for existing channels")
 	t.Log("✅ Multiple channels supported")
-	t.Log("✅ CLI handlers work correctly")
+	t.Log("✅ Direct peer methods work correctly")
 	t.Log("✅ Proper separation of create vs join operations")
 
 	t.Log("\nWorkflow Summary:")
-	t.Log("1. peer.CreateChannel() → ordererClient.CreateChannel() → orderer processes")
+	t.Log("1. peer.CreateChannel() → embedded ordererClient.CreateChannel() → orderer processes")
 	t.Log("2. peer.JoinChannel() → checks if channel exists locally → joins if exists")
 	t.Log("3. Clear error messages when trying to join non-existent channels")
 

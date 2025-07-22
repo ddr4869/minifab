@@ -1,39 +1,86 @@
 package channel
 
 import (
-	"errors"
+	"log"
 
-	"github.com/ddr4869/minifab/common/logger"
-	"github.com/ddr4869/minifab/peer/core"
+	"github.com/spf13/cobra"
 )
 
-// InitializeChannelManager는 peer에 channelManager를 설정합니다
-func InitializeChannelManager(peer *core.Peer) error {
-	if peer == nil {
-		return errors.New("peer instance is nil")
+var (
+	OrdererAddress string
+	PeerID         string
+	ChaincodePath  string
+	MspID          string
+	MspPath        string
+)
+
+const defaultProfile = "testchannel0"
+
+// GetChannelCommand returns the channel command with all subcommands
+func Cmd() *cobra.Command {
+	channelCmd := &cobra.Command{
+		Use:   "channel",
+		Short: "채널 관련 작업을 수행합니다",
+		Long:  `채널 생성, 참여, 목록 조회 등의 채널 관련 작업을 수행합니다.`,
+		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			common.initializePeer(cmd, args)
+		},
 	}
 
-	// Channel Manager 생성
-	channelManager := NewManager()
+	// 서브커맨드들 추가
+	channelCmd.AddCommand(getChannelCreateCmd())
+	channelCmd.AddCommand(getChannelJoinCmd())
+	channelCmd.AddCommand(getChannelListCmd())
 
-	// Peer에 Channel Manager 설정
-	peer.SetChannelManager(channelManager)
-
-	logger.Infof("✅ Channel manager initialized and set to peer")
-	return nil
+	return channelCmd
 }
 
-// EnsureChannelManagerInitialized는 peer의 channelManager가 초기화되어 있는지 확인하고, 없으면 초기화합니다
-func EnsureChannelManagerInitialized(peer *core.Peer) error {
-	if peer == nil {
-		return errors.New("peer instance is nil")
+// getChannelCreateCmd는 새로운 채널을 생성합니다
+func getChannelCreateCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "create [channel-name] [profile-name]",
+		Short: "새로운 채널을 생성합니다",
+		Long:  `지정된 이름으로 새로운 채널을 생성하고 orderer에 알립니다.`,
+		Args:  cobra.ExactArgs(2),
+		Run: func(cmd *cobra.Command, args []string) {
+			channelName := args[0]
+			profileName := args[1]
+			if profileName == "" {
+				profileName = defaultProfile
+			}
+			if err := CreateChannelWithProfile(channelName, profileName); err != nil {
+				log.Fatalf("Failed to create channel: %v", err)
+			}
+		},
 	}
+}
 
-	// 이미 channelManager가 설정되어 있는지 확인
-	if peer.GetChannelManager() != nil {
-		return nil // 이미 초기화됨
+// getChannelJoinCmd는 기존 채널에 참여합니다
+func getChannelJoinCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "join [channel-name]",
+		Short: "기존 채널에 참여합니다",
+		Long:  `지정된 이름의 기존 채널에 이 peer를 참여시킵니다.`,
+		Args:  cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			channelName := args[0]
+			if err := JoinChannel(channelName); err != nil {
+				log.Fatalf("Failed to join channel: %v", err)
+			}
+		},
 	}
+}
 
-	// 초기화 필요
-	return InitializeChannelManager(peer)
+// getChannelListCmd는 사용 가능한 채널 목록을 보여줍니다
+func getChannelListCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "list",
+		Short: "사용 가능한 채널 목록을 조회합니다",
+		Long:  `현재 peer가 알고 있는 모든 채널의 목록을 표시합니다.`,
+		Run: func(cmd *cobra.Command, args []string) {
+			if err := ListChannels(); err != nil {
+				log.Fatalf("Failed to list channels: %v", err)
+			}
+		},
+	}
 }
