@@ -6,7 +6,7 @@ import (
 
 type MSP interface {
 	Setup(config *MSPConfig) error
-	GetIdentifier() string
+	GetIdentifier() *IdentityIdentifier
 	// ValidateIdentity(identity Identity) error
 	// DeserializeIdentity(serializedIdentity []byte) (Identity, error)
 	// IsWellFormed(identity *SerializedIdentity) error

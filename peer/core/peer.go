@@ -6,30 +6,18 @@ import (
 	"github.com/ddr4869/minifab/peer/common"
 )
 
-var (
-	OrdererAddress string
-	PeerID         string
-	ChaincodePath  string
-	MspID          string
-	MspPath        string
-)
-
 type Peer struct {
-	// ID             string
 	// channelManager peer.ChannelManager
 	// transactions   []*types.Transaction
 	// mutex          sync.RWMutex
 	// chaincodePath  string
-	// msp            msp.MSP
-	// mspID          string
-	// ordererClient  client.OrdererService // OrdererService 필드 추가
 	PeerConfig    *PeerConfig
 	OrdererClient *common.OrdererClient
 }
 
-func NewPeer(mspId, mspPath, ordererAddress string) (*Peer, error) {
+func NewPeer(peerId, mspId, mspPath, ordererAddress string) (*Peer, error) {
 	// MSP 파일들로부터 MSP, Identity, PrivateKey 로드
-	fabricMSP, identity, privateKey, err := msp.CreateMSPFromFiles(MspPath, MspID)
+	fabricMSP, err := msp.CreateMSPFromFiles(mspId, mspPath)
 	if err != nil {
 		logger.Errorf("Failed to create MSP from files: %v", err)
 		return nil, err
@@ -37,8 +25,8 @@ func NewPeer(mspId, mspPath, ordererAddress string) (*Peer, error) {
 
 	logger.Infof("✅ Successfully loaded MSP from %s", mspPath)
 	logger.Info("📋 Identity Details:")
-	logger.Infof("   - ID: %s", identity.GetIdentifier().Id)
-	logger.Infof("   - MSP ID: %s", identity.GetIdentifier().Mspid)
+	logger.Infof("   - ID: %s", fabricMSP.GetIdentifier().Id)
+	logger.Infof("   - MSP ID: %s", fabricMSP.GetIdentifier().Mspid)
 
 	// 조직 단위 정보 출력
 	// ous := identity.GetOrganizationalUnits()
@@ -49,24 +37,19 @@ func NewPeer(mspId, mspPath, ordererAddress string) (*Peer, error) {
 	// 	}
 	// }
 
-	// privateKey는 나중에 사용할 수 있도록 저장 (현재는 로그만 출력)
-	if privateKey != nil {
-		logger.Info("🔑 Private key loaded successfully")
-	}
-
 	ordererClient, err := common.NewOrdererClient(ordererAddress)
 	if err != nil {
 		logger.Errorf("Failed to create orderer client: %v", err)
-		return nil
+		return nil, err
 	}
 
 	return &Peer{
 		PeerConfig: &PeerConfig{
-			PeerID: PeerID,
+			PeerID: peerId,
 			Msp:    fabricMSP,
 		},
 		OrdererClient: ordererClient,
-	}
+	}, nil
 }
 
 // // SetChannelManager 채널 매니저 설정 (의존성 주입)

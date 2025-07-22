@@ -10,29 +10,32 @@ import (
 	"github.com/pkg/errors"
 )
 
-// MSPFileLoader MSP 파일들을 로드하는 구조체
-type MSPFileLoader struct {
-	mspPath string
-}
-
-// NewMSPFileLoader MSP 파일 로더 생성
-func NewMSPFileLoader(mspPath string) *MSPFileLoader {
-	return &MSPFileLoader{
-		mspPath: mspPath,
+// CreateMSPFromFiles MSP 파일들로부터 MSP 생성
+func CreateMSPFromFiles(mspID, mspPath string) (MSP, error) {
+	// MSP 구조 검증
+	if err := ValidateMSPStructure(mspPath); err != nil {
+		return nil, errors.Wrap(err, "MSP structure validation failed")
 	}
+
+	// Identity 로드
+	msp, err := LoadMSP(mspID, mspPath)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to load identity")
+	}
+
+	return msp, nil
 }
 
-// LoadIdentityFromFiles return SigningIdentity & MSP
-func (loader *MSPFileLoader) LoadMSP(mspID string) (MSP, error) {
-
-	cert, err := loader.LoadSignCert()
+// LoadMSP MSP 파일들로부터 MSP와 Identity 로드
+func LoadMSP(mspID, mspPath string) (MSP, error) {
+	cert, err := LoadSignCert(mspPath)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load sign cert")
 	}
 
 	identity := NewIdentity(cert, cert.PublicKey, mspID)
 
-	privateKey, err := loader.LoadPrivateKey()
+	privateKey, err := LoadPrivateKey(mspPath)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load private key")
 	}
@@ -42,7 +45,7 @@ func (loader *MSPFileLoader) LoadMSP(mspID string) (MSP, error) {
 		return nil, errors.Wrap(err, "failed to create signer")
 	}
 
-	msp, err := loader.NewMSPWithIdentity(mspID, signer)
+	msp, err := NewMSPWithIdentity(mspID, mspPath, signer)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create MSP")
 	}
@@ -50,19 +53,20 @@ func (loader *MSPFileLoader) LoadMSP(mspID string) (MSP, error) {
 	return msp, nil
 }
 
-func (loader *MSPFileLoader) NewMSPWithIdentity(mspID string, identity SigningIdentity) (MSP, error) {
-	caCerts, err := loader.LoadCACerts()
+// NewMSPWithIdentity Identity를 사용하여 MSP 생성
+func NewMSPWithIdentity(mspID, mspPath string, identity SigningIdentity) (MSP, error) {
+	caCerts, err := LoadCACerts(mspPath)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load CA certs")
 	}
-	caTlsCerts, err := loader.LoadTLSCACerts()
+	caTlsCerts, err := LoadTLSCACerts(mspPath)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load CA TLS certs")
 	}
 
 	msp := NewFabricMSP()
 	mspConfig := &MSPConfig{
-		Name:            mspID,
+		MSPID:           mspID,
 		SigningIdentity: &identity,
 		RootCerts:       caCerts,
 		TLSRootCerts:    caTlsCerts,
@@ -76,31 +80,58 @@ func (loader *MSPFileLoader) NewMSPWithIdentity(mspID string, identity SigningId
 }
 
 // LoadSignCert signcerts 디렉토리에서 서명 인증서 로드
-func (loader *MSPFileLoader) LoadSignCert() (*x509.Certificate, error) {
-	certPath := filepath.Join(loader.mspPath, "signcerts", "cert.pem")
-	return loader.loadCertificateFromFile(certPath)
+func LoadSignCert(mspPath string) (*x509.Certificate, error) {
+	certPath := filepath.Join(mspPath, "signcerts", "cert.pem")
+	return loadCertificateFromFile(certPath)
 }
 
 // LoadPrivateKey keystore 디렉토리에서 개인키 로드
-func (loader *MSPFileLoader) LoadPrivateKey() (crypto.PrivateKey, error) {
-	keyPath := filepath.Join(loader.mspPath, "keystore", "key.pem")
-	return loader.loadPrivateKeyFromFile(keyPath)
+func LoadPrivateKey(mspPath string) (crypto.PrivateKey, error) {
+	keyPath := filepath.Join(mspPath, "keystore", "key.pem")
+	return loadPrivateKeyFromFile(keyPath)
 }
 
 // LoadCACerts cacerts 디렉토리에서 CA 인증서들 로드
-func (loader *MSPFileLoader) LoadCACerts() ([]*x509.Certificate, error) {
-	caCertsDir := filepath.Join(loader.mspPath, "cacerts")
-	return loader.loadCertificatesFromDir(caCertsDir)
+func LoadCACerts(mspPath string) ([]*x509.Certificate, error) {
+	caCertsDir := filepath.Join(mspPath, "cacerts")
+	return loadCertificatesFromDir(caCertsDir)
 }
 
 // LoadTLSCACerts tlscacerts 디렉토리에서 TLS CA 인증서들 로드
-func (loader *MSPFileLoader) LoadTLSCACerts() ([]*x509.Certificate, error) {
-	tlsCaCertsDir := filepath.Join(loader.mspPath, "tlscacerts")
-	return loader.loadCertificatesFromDir(tlsCaCertsDir)
+func LoadTLSCACerts(mspPath string) ([]*x509.Certificate, error) {
+	tlsCaCertsDir := filepath.Join(mspPath, "tlscacerts")
+	return loadCertificatesFromDir(tlsCaCertsDir)
+}
+
+// ValidateMSPStructure MSP 디렉토리 구조 검증
+func ValidateMSPStructure(mspPath string) error {
+	requiredDirs := []string{"signcerts", "keystore", "cacerts"}
+	requiredFiles := []string{
+		"signcerts/cert.pem",
+		"keystore/key.pem",
+	}
+
+	// 필수 디렉토리 확인
+	for _, dir := range requiredDirs {
+		dirPath := filepath.Join(mspPath, dir)
+		if err := checkPathExists(dirPath, true); err != nil {
+			return errors.Errorf("required directory missing: %s", dir)
+		}
+	}
+
+	// 필수 파일 확인
+	for _, file := range requiredFiles {
+		filePath := filepath.Join(mspPath, file)
+		if err := checkPathExists(filePath, false); err != nil {
+			return errors.Errorf("required file missing: %s", file)
+		}
+	}
+
+	return nil
 }
 
 // loadCertificateFromFile 파일에서 단일 인증서 로드
-func (loader *MSPFileLoader) loadCertificateFromFile(certPath string) (*x509.Certificate, error) {
+func loadCertificateFromFile(certPath string) (*x509.Certificate, error) {
 	certPEM, err := os.ReadFile(certPath)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to read certificate file %s", certPath)
@@ -120,7 +151,7 @@ func (loader *MSPFileLoader) loadCertificateFromFile(certPath string) (*x509.Cer
 }
 
 // loadPrivateKeyFromFile 파일에서 개인키 로드
-func (loader *MSPFileLoader) loadPrivateKeyFromFile(keyPath string) (crypto.PrivateKey, error) {
+func loadPrivateKeyFromFile(keyPath string) (crypto.PrivateKey, error) {
 	keyPEM, err := os.ReadFile(keyPath)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to read private key file %s", keyPath)
@@ -150,7 +181,7 @@ func (loader *MSPFileLoader) loadPrivateKeyFromFile(keyPath string) (crypto.Priv
 }
 
 // loadCertificatesFromDir 디렉토리에서 모든 인증서 로드
-func (loader *MSPFileLoader) loadCertificatesFromDir(dirPath string) ([]*x509.Certificate, error) {
+func loadCertificatesFromDir(dirPath string) ([]*x509.Certificate, error) {
 	files, err := os.ReadDir(dirPath)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to read directory %s", dirPath)
@@ -163,7 +194,7 @@ func (loader *MSPFileLoader) loadCertificatesFromDir(dirPath string) ([]*x509.Ce
 		}
 
 		certPath := filepath.Join(dirPath, file.Name())
-		cert, err := loader.loadCertificateFromFile(certPath)
+		cert, err := loadCertificateFromFile(certPath)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to load certificate from %s", certPath)
 		}
@@ -178,35 +209,8 @@ func (loader *MSPFileLoader) loadCertificatesFromDir(dirPath string) ([]*x509.Ce
 	return certs, nil
 }
 
-// ValidateMSPStructure MSP 디렉토리 구조 검증
-func (loader *MSPFileLoader) ValidateMSPStructure() error {
-	requiredDirs := []string{"signcerts", "keystore", "cacerts"}
-	requiredFiles := []string{
-		"signcerts/cert.pem",
-		"keystore/key.pem",
-	}
-
-	// 필수 디렉토리 확인
-	for _, dir := range requiredDirs {
-		dirPath := filepath.Join(loader.mspPath, dir)
-		if err := loader.checkPathExists(dirPath, true); err != nil {
-			return errors.Errorf("required directory missing: %s", dir)
-		}
-	}
-
-	// 필수 파일 확인
-	for _, file := range requiredFiles {
-		filePath := filepath.Join(loader.mspPath, file)
-		if err := loader.checkPathExists(filePath, false); err != nil {
-			return errors.Errorf("required file missing: %s", file)
-		}
-	}
-
-	return nil
-}
-
 // checkPathExists 경로 존재 여부 확인
-func (loader *MSPFileLoader) checkPathExists(path string, isDir bool) error {
+func checkPathExists(path string, isDir bool) error {
 	stat, err := os.Stat(path)
 	if err != nil {
 		return errors.Errorf("path does not exist or not accessible: %s", path)
@@ -232,62 +236,4 @@ func (loader *MSPFileLoader) checkPathExists(path string, isDir bool) error {
 	}
 
 	return nil
-}
-
-// CreateMSPFromFiles fabric-ca로 생성된 MSP 파일들로부터 MSP 생성 (헬퍼 함수)
-func CreateMSPFromFiles(mspPath, mspID string) (MSP, Identity, error) {
-	loader := NewMSPFileLoader(mspPath)
-
-	// MSP 구조 검증
-	if err := loader.ValidateMSPStructure(); err != nil {
-		return nil, nil, errors.Wrap(err, "MSP structure validation failed")
-	}
-
-	// Identity 로드
-	identity, err := loader.LoadMSP(mspID)
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "failed to load identity")
-	}
-
-	// caCerts, err := loader.LoadCACerts()
-	// if err != nil {
-	// 	return nil, errors.Wrap(err, "failed to load CA certs")
-	// }
-	// caTlsCerts, err := loader.LoadTLSCACerts()
-	// if err != nil {
-	// 	return nil, errors.Wrap(err, "failed to load CA TLS certs")
-	// }
-
-	// mspConfig := &MSPConfig{
-	// 	Name:         mspID,
-	// 	RootCerts:    caCerts,
-	// 	TLSRootCerts: caTlsCerts,
-	// }
-
-	// if err := msp.Setup(mspConfig); err != nil {
-	// 	return nil, errors.Wrap(err, "failed to setup MSP")
-	// }
-
-	// MSP는 identity를 생성할 때 사용된 msp를 다시 생성해서 반환
-	// (실제로는 이미 LoadIdentityFromFiles에서 생성된 msp를 재사용)
-	loader2 := NewMSPFileLoader(mspPath)
-	caCerts, err := loader2.LoadCACerts()
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "failed to reload CA certs")
-	}
-	msp := NewFabricMSP()
-	mspConfig := &MSPConfig{
-		Name: mspID,
-		// RootCerts:    caCerts,
-		// TLSRootCerts: caCerts,
-		SigningIdentity: &SigningIdentity{
-			Identity: identity,
-		},
-	}
-
-	if err := msp.Setup(mspConfig); err != nil {
-		return nil, nil, errors.Wrap(err, "failed to setup MSP")
-	}
-
-	return msp, identity, nil
 }

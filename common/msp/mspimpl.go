@@ -12,7 +12,7 @@ import (
 
 // MSP 설정 구조체
 type MSPConfig struct {
-	Name            string
+	MSPID           string
 	SigningIdentity *SigningIdentity
 	RootCerts       []*x509.Certificate
 	TLSRootCerts    []*x509.Certificate
@@ -25,7 +25,7 @@ type MSPConfig struct {
 }
 
 type FabricMSP struct {
-	Name            string
+	MSPID           string
 	SigningIdentity SigningIdentity
 	RootCerts       []*x509.Certificate
 	TlsRootCerts    []*x509.Certificate
@@ -57,12 +57,10 @@ type MSPPrincipal struct {
 
 type MSPPrincipal_Classification int32
 
-// GetIdentifier MSP 식별자 반환
-func (msp *FabricMSP) GetIdentifier() string {
-	return msp.Name
+func (msp *FabricMSP) GetIdentifier() *IdentityIdentifier {
+	return msp.SigningIdentity.GetIdentifier()
 }
 
-// NewFabricMSP MSP 인스턴스 생성
 func NewFabricMSP() *FabricMSP {
 	return &FabricMSP{}
 }
@@ -73,7 +71,7 @@ func (msp *FabricMSP) Setup(config *MSPConfig) error {
 		return errors.New("MSP config cannot be nil")
 	}
 
-	msp.Name = config.Name
+	msp.MSPID = config.MSPID
 	msp.SigningIdentity = *config.SigningIdentity
 	msp.RootCerts = config.RootCerts
 	msp.TlsRootCerts = config.TLSRootCerts
@@ -84,11 +82,9 @@ func (msp *FabricMSP) Setup(config *MSPConfig) error {
 
 // DeserializeIdentity 직렬화된 Identity를 역직렬화
 func (msp *FabricMSP) DeserializeIdentity(serializedIdentity []byte) (Identity, error) {
-	// 실제 구현에서는 protobuf 역직렬화를 수행
 	return &identity{
-		msp: msp,
 		id: &IdentityIdentifier{
-			Mspid: msp.Name,
+			Mspid: msp.MSPID,
 			Id:    "user",
 		},
 		// mock x509.Certificate
@@ -113,7 +109,7 @@ func (msp *FabricMSP) IsWellFormed(identity *SerializedIdentity) error {
 	if identity == nil {
 		return errors.New("identity cannot be nil")
 	}
-	if identity.Mspid != msp.Name {
+	if identity.Mspid != msp.MSPID {
 		return errors.New("identity MSP ID does not match")
 	}
 	return nil

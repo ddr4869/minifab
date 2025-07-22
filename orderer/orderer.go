@@ -82,78 +82,35 @@ type Channel struct {
 	MSP    msp.MSP
 }
 
-func NewOrderer(mspID string) *Orderer {
-	if mspID == "" {
-		logger.Warn("Empty MSP ID provided, using default")
-		mspID = "DefaultOrdererMSP"
-	}
-
-	// MSP 인스턴스 생성
-	fabricMSP := msp.NewFabricMSP()
-
-	// 기본 MSP 설정
-	config := &msp.MSPConfig{
-		Name: mspID,
-		CryptoConfig: &msp.FabricCryptoConfig{
-			SignatureHashFamily:            DefaultHashFamily,
-			IdentityIdentifierHashFunction: DefaultHashFunction,
-		},
-		NodeOUs: &msp.FabricNodeOUs{
-			Enable: true,
-			OrdererOUIdentifier: &msp.FabricOUIdentifier{
-				OrganizationalUnitIdentifier: DefaultOrdererOU,
-			},
-		},
-	}
-
-	if err := fabricMSP.Setup(config); err != nil {
-		logger.Errorf("Failed to setup MSP: %v", err)
-		// Continue with a basic MSP setup
-	}
-
-	return &Orderer{
-		blocks:   make([]*Block, 0),
-		channels: make(map[string]*Channel),
-		msp:      fabricMSP,
-		mspID:    mspID,
-	}
-}
-
 // NewOrdererWithMSPFiles fabric-ca로 생성된 MSP 파일들을 사용하여 Orderer 생성
-func NewOrdererWithMSPFiles(mspID string, mspPath string) *Orderer {
+func NewOrderer(mspID string, mspPath string) (*Orderer, error) {
 	// MSP 파일들로부터 MSP, Identity, PrivateKey 로드
-	fabricMSP, identity, privateKey, err := msp.CreateMSPFromFiles(mspPath, mspID)
+	fabricMSP, err := msp.CreateMSPFromFiles(mspID, mspPath)
 	if err != nil {
 		logger.Errorf("Failed to create MSP from files: %v", err)
-		// 실패 시 기본 MSP 사용
-		return NewOrderer(mspID)
+		return nil, err
 	}
 
 	logger.Infof("✅ Successfully loaded Orderer MSP from %s", mspPath)
 	logger.Info("📋 Orderer Identity Details:")
-	logger.Infof("   - ID: %s", identity.GetIdentifier().Id)
-	logger.Infof("   - MSP ID: %s", identity.GetMSPIdentifier())
+	logger.Infof("   - ID: %s", fabricMSP.GetIdentifier().Id)
+	logger.Infof("   - MSP ID: %s", fabricMSP.GetIdentifier().Mspid)
 
 	// 조직 단위 정보 출력
-	ous := identity.GetOrganizationalUnits()
-	if len(ous) > 0 {
-		logger.Info("   - Organizational Units:")
-		for _, ou := range ous {
-			logger.Infof("     * %s", ou.OrganizationalUnitIdentifier)
-		}
-	}
-
-	// privateKey는 나중에 사용할 수 있도록 저장 (현재는 로그만 출력)
-	if privateKey != nil {
-		logger.Info("🔑 Orderer private key loaded successfully")
-	}
+	// ous := identity.GetOrganizationalUnits()
+	// if len(ous) > 0 {
+	// 	logger.Info("   - Organizational Units:")
+	// 	for _, ou := range ous {
+	// 		logger.Infof("     * %s", ou.OrganizationalUnitIdentifier)
+	// 	}
+	// }
 
 	return &Orderer{
 		blocks:   make([]*Block, 0),
 		channels: make(map[string]*Channel),
 		msp:      fabricMSP,
 		mspID:    mspID,
-	}
+	}, nil
 }
 
 func (o *Orderer) CreateBlock(data []byte) (*Block, error) {
@@ -228,11 +185,7 @@ func (o *Orderer) CreateChannel(channelName string) error {
 	// 채널용 MSP 생성
 	channelMSP := msp.NewFabricMSP()
 	config := &msp.MSPConfig{
-		Name: fmt.Sprintf("%s.%s", o.mspID, channelName),
-		CryptoConfig: &msp.FabricCryptoConfig{
-			SignatureHashFamily:            DefaultHashFamily,
-			IdentityIdentifierHashFunction: DefaultHashFunction,
-		},
+		MSPID: fmt.Sprintf("%s.%s", o.mspID, channelName),
 	}
 
 	if err := channelMSP.Setup(config); err != nil {
@@ -246,48 +199,6 @@ func (o *Orderer) CreateChannel(channelName string) error {
 	}
 
 	logger.Infof("Channel '%s' created successfully", channelName)
-	return nil
-}
-
-// ValidateTransaction 트랜잭션 검증 (MSP 사용)
-func (o *Orderer) ValidateTransaction(channelID string, serializedIdentity []byte, signature []byte, payload []byte) error {
-	if channelID == "" {
-		return errors.New("channel ID cannot be empty")
-	}
-	if len(serializedIdentity) == 0 {
-		return errors.New("serialized identity cannot be empty")
-	}
-	if len(signature) == 0 {
-		return errors.New("signature cannot be empty")
-	}
-	if len(payload) == 0 {
-		return errors.New("payload cannot be empty")
-	}
-
-	o.mutex.RLock()
-	channel, exists := o.channels[channelID]
-	o.mutex.RUnlock()
-
-	if !exists {
-		return errors.Errorf("channel %s not found", channelID)
-	}
-
-	// Identity 역직렬화
-	identity, err := channel.MSP.DeserializeIdentity(serializedIdentity)
-	if err != nil {
-		return errors.Wrap(err, "failed to deserialize identity")
-	}
-
-	// Identity 검증
-	if err := channel.MSP.ValidateIdentity(identity); err != nil {
-		return errors.Wrap(err, "invalid identity")
-	}
-
-	// 서명 검증
-	if err := identity.Verify(payload, signature); err != nil {
-		return errors.Wrap(err, "signature verification failed")
-	}
-
 	return nil
 }
 
@@ -467,17 +378,13 @@ func (o *Orderer) createSystemChannel(genesisConfig *GenesisConfig) error {
 	// 시스템 채널용 MSP 생성
 	systemMSP := msp.NewFabricMSP()
 	config := &msp.MSPConfig{
-		Name: fmt.Sprintf("%s.%s", o.mspID, systemChannelName),
-		CryptoConfig: &msp.FabricCryptoConfig{
-			SignatureHashFamily:            DefaultHashFamily,
-			IdentityIdentifierHashFunction: DefaultHashFunction,
-		},
-		NodeOUs: &msp.FabricNodeOUs{
-			Enable: true,
-			OrdererOUIdentifier: &msp.FabricOUIdentifier{
-				OrganizationalUnitIdentifier: DefaultOrdererOU,
-			},
-		},
+		MSPID: fmt.Sprintf("%s.%s", o.mspID, systemChannelName),
+		// NodeOUs: &msp.FabricNodeOUs{
+		// 	Enable: true,
+		// 	OrdererOUIdentifier: &msp.FabricOUIdentifier{
+		// 		OrganizationalUnitIdentifier: DefaultOrdererOU,
+		// 	},
+		// },
 	}
 
 	if err := systemMSP.Setup(config); err != nil {

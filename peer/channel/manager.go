@@ -176,11 +176,7 @@ func (cm *Manager) CreateChannel(channelID string, consortium string, ordererAdd
 
 	// MSP 설정 생성
 	channelConfig := &msp.MSPConfig{
-		Name: fmt.Sprintf("%s.%s", "Org1MSP", channelID),
-		CryptoConfig: &msp.FabricCryptoConfig{
-			SignatureHashFamily:            "SHA2",
-			IdentityIdentifierHashFunction: "SHA256",
-		},
+		MSPID: fmt.Sprintf("%s.%s", "Org1MSP", channelID),
 	}
 
 	// MSP 인스턴스 생성 및 설정

@@ -67,7 +67,10 @@ func runOrderer(cmd *cobra.Command, args []string) {
 	}
 
 	// Create orderer instance with MSP files
-	o := orderer.NewOrdererWithMSPFiles(mspID, mspPath)
+	o, err := orderer.NewOrderer(mspID, mspPath)
+	if err != nil {
+		logger.Fatalf("Failed to create orderer: %v", err)
+	}
 
 	// Create gRPC server
 	server := orderer.NewOrdererServer(o)
@@ -99,7 +102,10 @@ func runBootstrap(cmd *cobra.Command, args []string) {
 	logger.Info("Starting network bootstrap process...")
 
 	// Orderer 인스턴스 생성 (MSP 파일 사용)
-	o := orderer.NewOrdererWithMSPFiles(mspID, mspPath)
+	o, err := orderer.NewOrderer(mspID, mspPath)
+	if err != nil {
+		logger.Fatalf("Failed to create orderer: %v", err)
+	}
 
 	// configtx.yaml에서 제네시스 설정 생성
 	genesisConfig, err := orderer.CreateGenesisConfigFromConfigTx(configTxPath)
