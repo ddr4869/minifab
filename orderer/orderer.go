@@ -170,37 +170,37 @@ func (o *Orderer) calculateBlockHash(block *Block) []byte {
 	return hash[:]
 }
 
-func (o *Orderer) CreateChannel(channelName string) error {
-	if err := validateChannelName(channelName); err != nil {
-		return err
-	}
+// func (o *Orderer) CreateChannel(channelName string) error {
+// 	if err := validateChannelName(channelName); err != nil {
+// 		return err
+// 	}
 
-	o.mutex.Lock()
-	defer o.mutex.Unlock()
+// 	o.mutex.Lock()
+// 	defer o.mutex.Unlock()
 
-	if _, exists := o.channels[channelName]; exists {
-		return errors.Errorf("channel %s already exists", channelName)
-	}
+// 	if _, exists := o.channels[channelName]; exists {
+// 		return errors.Errorf("channel %s already exists", channelName)
+// 	}
 
-	// 채널용 MSP 생성
-	channelMSP := msp.NewFabricMSP()
-	config := &msp.MSPConfig{
-		MSPID: fmt.Sprintf("%s.%s", o.mspID, channelName),
-	}
+// 	// 채널용 MSP 생성
+// 	channelMSP := msp.NewFabricMSP()
+// 	config := &msp.MSPConfig{
+// 		MSPID: fmt.Sprintf("%s.%s", o.mspID, channelName),
+// 	}
 
-	if err := channelMSP.Setup(config); err != nil {
-		return errors.Wrap(err, "failed to setup channel MSP")
-	}
+// 	if err := channelMSP.Setup(config); err != nil {
+// 		return errors.Wrap(err, "failed to setup channel MSP")
+// 	}
 
-	o.channels[channelName] = &Channel{
-		Name:   channelName,
-		Blocks: make([]*Block, 0),
-		MSP:    channelMSP,
-	}
+// 	o.channels[channelName] = &Channel{
+// 		Name:   channelName,
+// 		Blocks: make([]*Block, 0),
+// 		MSP:    channelMSP,
+// 	}
 
-	logger.Infof("Channel '%s' created successfully", channelName)
-	return nil
-}
+// 	logger.Infof("Channel '%s' created successfully", channelName)
+// 	return nil
+// }
 
 // GetMSP MSP 인스턴스 반환
 func (o *Orderer) GetMSP() msp.MSP {

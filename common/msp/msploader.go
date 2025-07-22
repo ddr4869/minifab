@@ -59,17 +59,12 @@ func NewMSPWithIdentity(mspID, mspPath string, identity SigningIdentity) (MSP, e
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load CA certs")
 	}
-	caTlsCerts, err := LoadTLSCACerts(mspPath)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to load CA TLS certs")
-	}
 
 	msp := NewFabricMSP()
 	mspConfig := &MSPConfig{
 		MSPID:           mspID,
 		SigningIdentity: &identity,
 		RootCerts:       caCerts,
-		TLSRootCerts:    caTlsCerts,
 	}
 
 	if err := msp.Setup(mspConfig); err != nil {
@@ -95,12 +90,6 @@ func LoadPrivateKey(mspPath string) (crypto.PrivateKey, error) {
 func LoadCACerts(mspPath string) ([]*x509.Certificate, error) {
 	caCertsDir := filepath.Join(mspPath, "cacerts")
 	return loadCertificatesFromDir(caCertsDir)
-}
-
-// LoadTLSCACerts tlscacerts 디렉토리에서 TLS CA 인증서들 로드
-func LoadTLSCACerts(mspPath string) ([]*x509.Certificate, error) {
-	tlsCaCertsDir := filepath.Join(mspPath, "tlscacerts")
-	return loadCertificatesFromDir(tlsCaCertsDir)
 }
 
 // ValidateMSPStructure MSP 디렉토리 구조 검증

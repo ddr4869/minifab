@@ -45,3 +45,8 @@ func NewOrdererClient(address string) (*OrdererClient, error) {
 		client: client,
 	}, nil
 }
+
+// GetClient returns the internal proto client for direct gRPC calls
+func (oc *OrdererClient) GetClient() proto.OrdererServiceClient {
+	return oc.client
+}

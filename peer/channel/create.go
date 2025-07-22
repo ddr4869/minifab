@@ -1,75 +1,79 @@
 package channel
 
-// import (
-// 	"github.com/ddr4869/minifab/common/logger"
-// 	"github.com/ddr4869/minifab/peer/cli"
-// 	"github.com/pkg/errors"
-// 	"github.com/spf13/cobra"
-// )
+import (
+	"context"
+	"log"
+	"time"
 
-// var (
-// 	defaultProfile = "testchannel0"
-// )
+	"github.com/ddr4869/minifab/common/logger"
+	"github.com/ddr4869/minifab/peer/core"
+	"github.com/ddr4869/minifab/proto"
+	"github.com/pkg/errors"
+	"github.com/spf13/cobra"
+)
 
-// // var channelCreateCmd = &cobra.Command{
-// // 	Use:   "create [channel-name] [profile-name]",
-// // 	Short: "새로운 채널을 생성합니다",
-// // 	Long:  `지정된 이름으로 새로운 채널을 생성하고 orderer에 알립니다.`,
-// // 	Args:  cobra.ExactArgs(2),
-// // 	Run: func(cmd *cobra.Command, args []string) {
-// // 		channelName := args[0]
-// // 		profileName := args[1]
-// // 		if profileName == "" {
-// // 			profileName = defaultProfile
-// // 		}
-// // 		if err := cliHandlers.HandleChannelCreateWithProfile(channelName, profileName); err != nil {
-// // 			log.Fatalf("Failed to create channel: %v", err)
-// // 		}
-// // 	},
-// // }
+// getChannelCreateCmd는 새로운 채널을 생성합니다
+func getChannelCreateCmd(peer *core.Peer) *cobra.Command {
+	var channelName string
+	var profileName string
 
-// func channelCreateCmd(handler *cli.Handlers) *cobra.Command {
-// 	cmd := &cobra.Command{
-// 		Use:   "create [channel-name] [profile-name]",
-// 		Short: "새로운 채널을 생성합니다",
-// 		Long:  `지정된 이름으로 새로운 채널을 생성하고 orderer에 알립니다.`,
-// 		Args:  cobra.ExactArgs(2),
-// 	}
+	cmd := &cobra.Command{
+		Use:   "create",
+		Short: "새로운 채널을 생성합니다",
+		Long:  `지정된 이름으로 새로운 채널을 생성하고 orderer에 알립니다.`,
+		Run: func(cmd *cobra.Command, args []string) {
+			if channelName == "" {
+				log.Fatalf("Channel name is required. Use -c or --channelID flag")
+			}
 
-// 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
-// 		channelName := args[0]
-// 		profileName := args[1]
-// 		if profileName == "" {
-// 			profileName = defaultProfile
-// 		}
-// 		return CreateChannelWithProfile(handler, channelName, profileName)
-// 	}
+			if profileName == "" {
+				profileName = "testchannel0"
+			}
 
-// 	return cmd
-// }
+			if err := CreateChannel(peer, channelName, profileName); err != nil {
+				log.Fatalf("Failed to create channel: %v", err)
+			}
+		},
+	}
 
-// // CreateChannelWithProfile creates a channel with specific profile via orderer and then creates it locally
-// func CreateChannelWithProfile(handler *cli.Handlers, channelName, profileName string) error {
-// 	logger.Infof("[Peer] Creating channel: %s with profile: %s", channelName, profileName)
+	// Fabric CLI 스타일 플래그 추가
+	cmd.Flags().StringVarP(&channelName, "channelID", "c", "", "Channel name (required)")
+	cmd.Flags().StringVarP(&profileName, "profile", "p", "testchannel0", "Profile name for channel creation")
+	cmd.MarkFlagRequired("channelID")
 
-// 	// 1. First, request channel creation from orderer with profile
-// 	if handler.OrdererClient == nil {
-// 		return errors.New("orderer client is required for channel creation")
-// 	}
+	return cmd
+}
 
-// 	if err := handler.OrdererClient.CreateChannelWithProfile(channelName, profileName, "config/configtx.yaml"); err != nil {
-// 		return errors.Wrapf(err, "failed to create channel %s via orderer with profile %s", channelName, profileName)
-// 	}
+// CreateChannel creates a channel with specific profile via orderer and then creates it locally
+func CreateChannel(peer *core.Peer, channelName, profileName string) error {
+	logger.Infof("[Peer] Creating channel: %s with profile: %s", channelName, profileName)
 
-// 	// 2. Then create the channel locally
-// 	if p.channelManager == nil {
-// 		return errors.New("channel manager not initialized")
-// 	}
+	// 1. First, request channel creation from orderer with profile
+	if peer.OrdererClient == nil {
+		return errors.New("orderer client is required for channel creation")
+	}
 
-// 	if err := p.channelManager.CreateChannel(channelName, "SampleConsortium", "localhost:7050"); err != nil {
-// 		return errors.Wrapf(err, "failed to create local channel %s", channelName)
-// 	}
+	// 직접 gRPC 호출로 채널 생성
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
-// 	logger.Infof("[Peer] Channel %s created successfully with profile %s", channelName, profileName)
-// 	return nil
-// }
+	req := &proto.ChannelRequest{
+		ChannelName:  channelName,
+		ProfileName:  profileName,
+		ConfigtxPath: "config/configtx.yaml",
+	}
+
+	// OrdererClient에서 직접 proto 클라이언트에 접근
+	client := peer.OrdererClient.GetClient()
+	resp, err := client.CreateChannel(ctx, req)
+	if err != nil {
+		return errors.Wrapf(err, "failed to create channel %s via orderer with profile %s", channelName, profileName)
+	}
+
+	if resp.Status != proto.StatusCode_OK {
+		return errors.Errorf("channel creation failed: %s", resp.Message)
+	}
+
+	logger.Infof("[Peer] Channel %s created successfully with profile %s", channelName, profileName)
+	return nil
+}

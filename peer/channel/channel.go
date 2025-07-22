@@ -3,6 +3,7 @@ package channel
 import (
 	"log"
 
+	"github.com/ddr4869/minifab/common/logger"
 	"github.com/ddr4869/minifab/peer/core"
 	"github.com/spf13/cobra"
 )
@@ -14,8 +15,6 @@ var (
 	MspID          string
 	MspPath        string
 )
-
-const defaultProfile = "testchannel0"
 
 // GetChannelCommand returns the channel command with all subcommands
 func Cmd() *cobra.Command {
@@ -33,37 +32,22 @@ func Cmd() *cobra.Command {
 	flags.StringVar(&MspID, "mspid", "Org1MSP", "MSP ID for peer")
 	flags.StringVar(&MspPath, "mspdir", "/Users/mac/go/src/github.com/custom-fabric/ca/ca-client/peer0/msp", "Path to MSP directory with certificates")
 
-	_, err := core.NewPeer(PeerID, MspID, MspPath, OrdererAddress)
+	peer, err := core.NewPeer(PeerID, MspID, MspPath, OrdererAddress)
 	if err != nil {
 		log.Fatalf("Failed to create peer: %v", err)
 	}
 
-	// channelCmd.AddCommand(getChannelCreateCmd())
+	// peer 로그 출력
+	logger.Infof("✅ Successfully created peer: %v", peer)
+	logger.Infof("✅ MSP ID: %s", peer.PeerConfig.Msp.GetIdentifier().Mspid)
+	logger.Infof("✅ MSP ID: %s", peer.PeerConfig.Msp.GetIdentifier().Id)
+
+	channelCmd.AddCommand(getChannelCreateCmd(peer))
 	// channelCmd.AddCommand(getChannelJoinCmd())
 	// channelCmd.AddCommand(getChannelListCmd())
 
 	return channelCmd
 }
-
-// // getChannelCreateCmd는 새로운 채널을 생성합니다
-// func getChannelCreateCmd() *cobra.Command {
-// 	return &cobra.Command{
-// 		Use:   "create [channel-name] [profile-name]",
-// 		Short: "새로운 채널을 생성합니다",
-// 		Long:  `지정된 이름으로 새로운 채널을 생성하고 orderer에 알립니다.`,
-// 		Args:  cobra.ExactArgs(2),
-// 		Run: func(cmd *cobra.Command, args []string) {
-// 			channelName := args[0]
-// 			profileName := args[1]
-// 			if profileName == "" {
-// 				profileName = defaultProfile
-// 			}
-// 			if err := CreateChannelWithProfile(channelName, profileName); err != nil {
-// 				log.Fatalf("Failed to create channel: %v", err)
-// 			}
-// 		},
-// 	}
-// }
 
 // // getChannelJoinCmd는 기존 채널에 참여합니다
 // func getChannelJoinCmd() *cobra.Command {

@@ -562,23 +562,14 @@ func (g *GenesisBlockGenerator) createMSPConfig(org *OrganizationConfig) (*msp.M
 		return nil, errors.Wrapf(err, "failed to load CA certs for org %s", org.Name)
 	}
 
-	// Load TLS CA certificates (optional)
-	tlsCACerts, err := msp.LoadTLSCACerts(org.MSPDir)
-	if err != nil {
-		// Use regular CA certificates if TLS CA certificates are not available
-		// This is acceptable for development but should be logged in production
-		tlsCACerts = caCerts
-	}
-
 	// Validate that we have at least one certificate
 	if len(caCerts) == 0 {
 		return nil, errors.Errorf("no CA certificates found for org %s", org.Name)
 	}
 
 	mspConfig := &msp.MSPConfig{
-		MSPID:        org.ID,
-		RootCerts:    caCerts,
-		TLSRootCerts: tlsCACerts,
+		MSPID:     org.ID,
+		RootCerts: caCerts,
 		// NodeOUs: &msp.FabricNodeOUs{
 		// 	Enable: true,
 		// 	ClientOUIdentifier: &msp.FabricOUIdentifier{

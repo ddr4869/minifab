@@ -15,7 +15,6 @@ type MSPConfig struct {
 	MSPID           string
 	SigningIdentity *SigningIdentity
 	RootCerts       []*x509.Certificate
-	TLSRootCerts    []*x509.Certificate
 	//Admins                        []*x509.Certificate
 	// RevocationList                []*x509.Certificate
 	// OrganizationalUnitIdentifiers []*FabricOUIdentifier
@@ -28,7 +27,6 @@ type FabricMSP struct {
 	MSPID           string
 	SigningIdentity SigningIdentity
 	RootCerts       []*x509.Certificate
-	TlsRootCerts    []*x509.Certificate
 	// Admins          []*identity
 	// Bccsp           BCCSP
 	//CryptoConfig    *FabricCryptoConfig
@@ -74,7 +72,6 @@ func (msp *FabricMSP) Setup(config *MSPConfig) error {
 	msp.MSPID = config.MSPID
 	msp.SigningIdentity = *config.SigningIdentity
 	msp.RootCerts = config.RootCerts
-	msp.TlsRootCerts = config.TLSRootCerts
 	// msp.CryptoConfig = config.CryptoConfig
 	// msp.NodeOUs = config.NodeOUs
 	return nil
