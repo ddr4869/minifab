@@ -43,38 +43,8 @@ func Cmd() *cobra.Command {
 	logger.Infof("✅ MSP ID: %s", peer.PeerConfig.Msp.GetIdentifier().Id)
 
 	channelCmd.AddCommand(getChannelCreateCmd(peer))
-	// channelCmd.AddCommand(getChannelJoinCmd())
-	// channelCmd.AddCommand(getChannelListCmd())
+	channelCmd.AddCommand(getChannelJoinCmd(peer))
+	channelCmd.AddCommand(getChannelListCmd(peer))
 
 	return channelCmd
 }
-
-// // getChannelJoinCmd는 기존 채널에 참여합니다
-// func getChannelJoinCmd() *cobra.Command {
-// 	return &cobra.Command{
-// 		Use:   "join [channel-name]",
-// 		Short: "기존 채널에 참여합니다",
-// 		Long:  `지정된 이름의 기존 채널에 이 peer를 참여시킵니다.`,
-// 		Args:  cobra.ExactArgs(1),
-// 		Run: func(cmd *cobra.Command, args []string) {
-// 			channelName := args[0]
-// 			if err := JoinChannel(channelName); err != nil {
-// 				log.Fatalf("Failed to join channel: %v", err)
-// 			}
-// 		},
-// 	}
-// }
-
-// // getChannelListCmd는 사용 가능한 채널 목록을 보여줍니다
-// func getChannelListCmd() *cobra.Command {
-// 	return &cobra.Command{
-// 		Use:   "list",
-// 		Short: "사용 가능한 채널 목록을 조회합니다",
-// 		Long:  `현재 peer가 알고 있는 모든 채널의 목록을 표시합니다.`,
-// 		Run: func(cmd *cobra.Command, args []string) {
-// 			if err := ListChannels(); err != nil {
-// 				log.Fatalf("Failed to list channels: %v", err)
-// 			}
-// 		},
-// 	}
-// }

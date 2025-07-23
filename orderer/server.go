@@ -121,7 +121,7 @@ func (s *OrdererServer) CreateChannel(ctx context.Context, req *pb.ChannelReques
 	s.orderer.channels[req.ChannelName] = channel
 
 	// 채널 구성을 JSON 파일로 저장
-	if err := s.saveChannelConfig(req.ChannelName, channelConfig); err != nil {
+	if err := saveChannelConfig(req.ChannelName, channelConfig); err != nil {
 		logger.Errorf("Failed to save channel config: %v", err)
 		// 채널은 생성되었지만 설정 저장 실패는 경고로 처리
 	}
@@ -612,7 +612,7 @@ func (s *OrdererServer) createChannelFromProfile(configTxPath, profileName, chan
 }
 
 // saveChannelConfig saves channel configuration to JSON file
-func (s *OrdererServer) saveChannelConfig(channelName string, config map[string]interface{}) error {
+func saveChannelConfig(channelName string, config map[string]interface{}) error {
 	// channels 디렉토리 생성
 	channelsDir := "channels"
 	if err := os.MkdirAll(channelsDir, 0755); err != nil {
