@@ -61,6 +61,8 @@ func init() {
 }
 
 func runOrderer(cmd *cobra.Command, args []string) {
+	logger.Info("Starting orderer process...")
+
 	// Validate input parameters
 	if err := validateOrdererParams(); err != nil {
 		logger.Fatalf("Invalid parameters: %v", err)
@@ -134,6 +136,8 @@ func runBootstrap(cmd *cobra.Command, args []string) {
 			}
 		}
 	}
+
+	logger.Infof("genesisConfig: %+v", genesisConfig)
 
 	// 네트워크 부트스트랩 실행
 	if err := o.BootstrapNetwork(genesisConfig); err != nil {

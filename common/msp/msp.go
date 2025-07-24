@@ -15,8 +15,8 @@ type MSP interface {
 // Identity 인터페이스
 type Identity interface {
 	GetIdentifier() *IdentityIdentifier
-	// GetMSPIdentifier() string
 	Validate() error
+	// GetMSPIdentifier() string
 	// GetOrganizationalUnits() []*OUIdentifier
 	// Verify(msg []byte, sig []byte) error
 	// Serialize() ([]byte, error)

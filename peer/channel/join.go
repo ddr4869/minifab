@@ -14,7 +14,7 @@ func getChannelJoinCmd(peer *core.Peer) *cobra.Command {
 	var channelName string
 
 	cmd := &cobra.Command{
-		Use:   "create",
+		Use:   "join",
 		Short: "기존 채널에 참여합니다",
 		Long:  `지정된 이름으로 기존 채널에 참여합니다.`,
 		Run: func(cmd *cobra.Command, args []string) {

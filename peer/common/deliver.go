@@ -2,7 +2,6 @@ package common
 
 import (
 	"github.com/ddr4869/minifab/common/logger"
-	"github.com/ddr4869/minifab/common/types"
 	"github.com/ddr4869/minifab/proto"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
@@ -13,7 +12,7 @@ import (
 type OrdererService interface {
 	CreateChannel(channelName string) error
 	CreateChannelWithProfile(channelName, profileName, configTxPath string) error
-	SubmitTransaction(tx *types.Transaction) error
+	// SubmitTransaction(tx *types.Transaction) error
 	Close() error
 }
 

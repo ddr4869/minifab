@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ddr4869/minifab/common/configtx"
 	"github.com/ddr4869/minifab/common/logger"
 	"github.com/ddr4869/minifab/common/msp"
 	"github.com/pkg/errors"
@@ -379,6 +380,7 @@ func (o *Orderer) createSystemChannel(genesisConfig *GenesisConfig) error {
 	systemMSP := msp.NewFabricMSP()
 	config := &msp.MSPConfig{
 		MSPID: fmt.Sprintf("%s.%s", o.mspID, systemChannelName),
+		//SigningIdentity: o.msp.GetIdentifier(),
 		// NodeOUs: &msp.FabricNodeOUs{
 		// 	Enable: true,
 		// 	OrdererOUIdentifier: &msp.FabricOUIdentifier{
@@ -531,7 +533,7 @@ func CreateGenesisConfigFromConfigTx(configTxPath string) (*GenesisConfig, error
 	}
 
 	// YAML 파싱
-	var configTx ConfigTxYAML
+	var configTx configtx.ConfigTxYAML
 	if err := yaml.Unmarshal(data, &configTx); err != nil {
 		return nil, errors.Wrap(err, "failed to parse configtx YAML")
 	}
@@ -550,65 +552,8 @@ func CreateGenesisConfigFromConfigTx(configTxPath string) (*GenesisConfig, error
 	return genesisConfig, nil
 }
 
-// ConfigTxYAML configtx.yaml 파일 구조체 정의
-type ConfigTxYAML struct {
-	Organizations []OrganizationYAML `yaml:"Organizations"`
-	Application   ApplicationYAML    `yaml:"Application"`
-	Orderer       OrdererYAML        `yaml:"Orderer"`
-	Channel       ChannelYAML        `yaml:"Channel"`
-}
-
-// OrganizationYAML YAML의 Organization 구조체
-type OrganizationYAML struct {
-	Name             string                `yaml:"Name"`
-	ID               string                `yaml:"ID"`
-	MSPDir           string                `yaml:"MSPDir"`
-	Policies         map[string]PolicyYAML `yaml:"Policies"`
-	OrdererEndpoints []string              `yaml:"OrdererEndpoints,omitempty"`
-	AnchorPeers      []AnchorPeerYAML      `yaml:"AnchorPeers,omitempty"`
-}
-
-// AnchorPeerYAML YAML의 AnchorPeer 구조체
-type AnchorPeerYAML struct {
-	Host string `yaml:"Host"`
-	Port int    `yaml:"Port"`
-}
-
-// PolicyYAML YAML의 Policy 구조체
-type PolicyYAML struct {
-	Type string `yaml:"Type"`
-	Rule string `yaml:"Rule"`
-}
-
-// ApplicationYAML YAML의 Application 구조체
-type ApplicationYAML struct {
-	Organizations []interface{}         `yaml:"Organizations"`
-	Policies      map[string]PolicyYAML `yaml:"Policies"`
-}
-
-// OrdererYAML YAML의 Orderer 구조체
-type OrdererYAML struct {
-	OrdererType   string                `yaml:"OrdererType"`
-	BatchTimeout  string                `yaml:"BatchTimeout"`
-	BatchSize     BatchSizeYAML         `yaml:"BatchSize"`
-	Organizations []interface{}         `yaml:"Organizations"`
-	Policies      map[string]PolicyYAML `yaml:"Policies"`
-}
-
-// BatchSizeYAML YAML의 BatchSize 구조체
-type BatchSizeYAML struct {
-	MaxMessageCount   int    `yaml:"MaxMessageCount"`
-	AbsoluteMaxBytes  string `yaml:"AbsoluteMaxBytes"`
-	PreferredMaxBytes string `yaml:"PreferredMaxBytes"`
-}
-
-// ChannelYAML YAML의 Channel 구조체
-type ChannelYAML struct {
-	Policies map[string]PolicyYAML `yaml:"Policies"`
-}
-
 // convertConfigTxToGenesisConfig ConfigTxYAML을 GenesisConfig로 변환
-func convertConfigTxToGenesisConfig(configTx *ConfigTxYAML, configTxPath string) (*GenesisConfig, error) {
+func convertConfigTxToGenesisConfig(configTx *configtx.ConfigTxYAML, configTxPath string) (*GenesisConfig, error) {
 	// 기본값 설정
 	networkName := DefaultNetworkName
 	consortiumName := DefaultConsortiumName
@@ -689,7 +634,7 @@ func convertConfigTxToGenesisConfig(configTx *ConfigTxYAML, configTxPath string)
 }
 
 // convertPoliciesFromYAML YAML 정책을 GenesisConfig 정책으로 변환
-func convertPoliciesFromYAML(yamlPolicies map[string]PolicyYAML) map[string]*Policy {
+func convertPoliciesFromYAML(yamlPolicies map[string]configtx.PolicyYAML) map[string]*Policy {
 	if yamlPolicies == nil {
 		return make(map[string]*Policy)
 	}
@@ -747,7 +692,7 @@ func parseImplicitMetaRule(rule string) *ImplicitMetaRule {
 }
 
 // convertBatchSizeFromYAML YAML BatchSize를 GenesisConfig BatchSize로 변환
-func convertBatchSizeFromYAML(yamlBatchSize BatchSizeYAML) (*BatchSizeConfig, error) {
+func convertBatchSizeFromYAML(yamlBatchSize configtx.BatchSizeYAML) (*BatchSizeConfig, error) {
 	absoluteMaxBytes, err := parseBatchSizeBytes(yamlBatchSize.AbsoluteMaxBytes)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse absolute max bytes")

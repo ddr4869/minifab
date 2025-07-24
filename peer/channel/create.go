@@ -48,13 +48,12 @@ func getChannelCreateCmd(peer *core.Peer) *cobra.Command {
 func CreateChannel(peer *core.Peer, channelName, profileName string) error {
 	logger.Infof("[Peer] Creating channel: %s with profile: %s", channelName, profileName)
 
-	// 1. First, request channel creation from orderer with profile
 	if peer.OrdererClient == nil {
 		return errors.New("orderer client is required for channel creation")
 	}
 
 	// 직접 gRPC 호출로 채널 생성
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	req := &proto.ChannelRequest{
