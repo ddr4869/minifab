@@ -112,28 +112,18 @@ func runBootstrap(cmd *cobra.Command, args []string) {
 	// configtx.yaml에서 제네시스 설정 생성
 	genesisConfig, err := orderer.CreateGenesisConfigFromConfigTx(configTxPath)
 	if err != nil {
-		logger.Warnf("Failed to load configtx.yaml: %v", err)
-		logger.Info("Using default genesis configuration instead")
+		logger.Fatalf("Failed to load configtx.yaml: %v", err)
+	}
 
-		// configtx.yaml 로드 실패 시 기본 설정 사용
-		genesisConfig = orderer.DefaultGenesisConfig()
+	logger.Info("Successfully loaded configuration from configtx.yaml")
 
-		// MSP 경로 업데이트 (현재 설정 사용)
-		if len(genesisConfig.OrdererOrgs) > 0 {
-			genesisConfig.OrdererOrgs[0].MSPDir = mspPath
-			genesisConfig.OrdererOrgs[0].ID = mspID
-		}
-	} else {
-		logger.Info("Successfully loaded configuration from configtx.yaml")
-
-		// configtx.yaml에서 로드한 설정에서 실제 MSP 경로와 ID로 업데이트
-		// (명령행 인수가 우선순위를 가짐)
-		for _, ordererOrg := range genesisConfig.OrdererOrgs {
-			if ordererOrg.ID == mspID || len(genesisConfig.OrdererOrgs) == 1 {
-				ordererOrg.MSPDir = mspPath
-				ordererOrg.ID = mspID
-				break
-			}
+	// configtx.yaml에서 로드한 설정에서 실제 MSP 경로와 ID로 업데이트
+	// (명령행 인수가 우선순위를 가짐)
+	for _, ordererOrg := range genesisConfig.OrdererOrgs {
+		if ordererOrg.ID == mspID || len(genesisConfig.OrdererOrgs) == 1 {
+			ordererOrg.MSPDir = mspPath
+			ordererOrg.ID = mspID
+			break
 		}
 	}
 
@@ -142,11 +132,6 @@ func runBootstrap(cmd *cobra.Command, args []string) {
 	// 네트워크 부트스트랩 실행
 	if err := o.BootstrapNetwork(genesisConfig); err != nil {
 		logger.Fatalf("Failed to bootstrap network: %v", err)
-	}
-
-	// 제네시스 블록을 파일로 저장
-	if err := o.SaveGenesisBlock(genesisFile); err != nil {
-		logger.Fatalf("Failed to save genesis block: %v", err)
 	}
 
 	logger.Info("Network bootstrap completed successfully!")

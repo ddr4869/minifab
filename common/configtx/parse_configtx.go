@@ -140,19 +140,3 @@ func (c *ConfigTx) parseBatchSizeConfig() (*BatchSizeConfig, error) {
 		PreferredMaxBytes: preferredMaxBytes,
 	}, nil
 }
-
-// convertPolicies converts configtx policies to genesis config policies
-func convertPolicies(policies map[string]Policy) map[string]*PolicyConfig {
-	if policies == nil {
-		return make(map[string]*PolicyConfig)
-	}
-
-	converted := make(map[string]*PolicyConfig)
-	for name, policy := range policies {
-		converted[name] = &PolicyConfig{
-			Type: policy.Type,
-			Rule: policy.Rule,
-		}
-	}
-	return converted
-}

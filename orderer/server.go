@@ -591,9 +591,6 @@ func (s *OrdererServer) createChannelFromProfile(configTxPath, profileName, chan
 			"Writers": "ANY Writers",
 			"Admins":  "ANY Admins",
 		},
-		"capabilities": map[string]bool{
-			"V2_0": true,
-		},
 		"created_at": time.Now().Format(time.RFC3339),
 	}
 

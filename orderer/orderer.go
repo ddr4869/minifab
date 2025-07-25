@@ -9,31 +9,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ddr4869/minifab/common/common"
 	"github.com/ddr4869/minifab/common/configtx"
 	"github.com/ddr4869/minifab/common/logger"
 	"github.com/ddr4869/minifab/common/msp"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
 )
-
-// OrdererInterface defines the interface for orderer operations
-type OrdererInterface interface {
-	CreateBlock(data []byte) (*Block, error)
-	CreateChannel(channelName string) error
-	ValidateTransaction(channelID string, serializedIdentity []byte, signature []byte, payload []byte) error
-	GetMSP() msp.MSP
-	GetMSPID() string
-	GetBlockCount() uint64
-	GetBlock(blockNumber uint64) (*Block, error)
-	GetChannels() []string
-	GetChannel(channelName string) (*Channel, error)
-	BootstrapNetwork(genesisConfig *GenesisConfig) error
-	IsBootstrapped() bool
-	GetGenesisBlock() *GenesisBlock
-	GetSystemChannel() string
-	SaveGenesisBlock(filePath string) error
-	LoadGenesisBlock(filePath string) error
-}
 
 const (
 	// File permissions
@@ -69,18 +51,12 @@ type Orderer struct {
 	blocks         []*Block
 	currentBlock   *Block
 	mutex          sync.RWMutex
-	channels       map[string]*Channel
+	channels       map[string]*common.Channel
 	msp            msp.MSP
 	mspID          string
-	genesisBlock   *GenesisBlock
+	genesisBlock   *configtx.GenesisConfig
 	systemChannel  string
 	isBootstrapped bool
-}
-
-type Channel struct {
-	Name   string
-	Blocks []*Block
-	MSP    msp.MSP
 }
 
 // NewOrdererWithMSPFiles fabric-ca로 생성된 MSP 파일들을 사용하여 Orderer 생성
@@ -108,7 +84,7 @@ func NewOrderer(mspID string, mspPath string) (*Orderer, error) {
 
 	return &Orderer{
 		blocks:   make([]*Block, 0),
-		channels: make(map[string]*Channel),
+		channels: make(map[string]*common.Channel),
 		msp:      fabricMSP,
 		mspID:    mspID,
 	}, nil
@@ -171,38 +147,6 @@ func (o *Orderer) calculateBlockHash(block *Block) []byte {
 	return hash[:]
 }
 
-// func (o *Orderer) CreateChannel(channelName string) error {
-// 	if err := validateChannelName(channelName); err != nil {
-// 		return err
-// 	}
-
-// 	o.mutex.Lock()
-// 	defer o.mutex.Unlock()
-
-// 	if _, exists := o.channels[channelName]; exists {
-// 		return errors.Errorf("channel %s already exists", channelName)
-// 	}
-
-// 	// 채널용 MSP 생성
-// 	channelMSP := msp.NewFabricMSP()
-// 	config := &msp.MSPConfig{
-// 		MSPID: fmt.Sprintf("%s.%s", o.mspID, channelName),
-// 	}
-
-// 	if err := channelMSP.Setup(config); err != nil {
-// 		return errors.Wrap(err, "failed to setup channel MSP")
-// 	}
-
-// 	o.channels[channelName] = &Channel{
-// 		Name:   channelName,
-// 		Blocks: make([]*Block, 0),
-// 		MSP:    channelMSP,
-// 	}
-
-// 	logger.Infof("Channel '%s' created successfully", channelName)
-// 	return nil
-// }
-
 // GetMSP MSP 인스턴스 반환
 func (o *Orderer) GetMSP() msp.MSP {
 	o.mutex.RLock()
@@ -249,7 +193,7 @@ func (o *Orderer) GetChannels() []string {
 }
 
 // GetChannel returns a channel by name
-func (o *Orderer) GetChannel(channelName string) (*Channel, error) {
+func (o *Orderer) GetChannel(channelName string) (*common.Channel, error) {
 	if channelName == "" {
 		return nil, errors.New("channel name cannot be empty")
 	}
@@ -266,7 +210,7 @@ func (o *Orderer) GetChannel(channelName string) (*Channel, error) {
 }
 
 // BootstrapNetwork 네트워크 부트스트랩 (제네시스 블록 생성)
-func (o *Orderer) BootstrapNetwork(genesisConfig *GenesisConfig) error {
+func (o *Orderer) BootstrapNetwork(genesisConfig *configtx.GenesisConfig) error {
 	o.mutex.Lock()
 	defer o.mutex.Unlock()
 
@@ -277,17 +221,12 @@ func (o *Orderer) BootstrapNetwork(genesisConfig *GenesisConfig) error {
 	logger.Info("Starting network bootstrap process")
 
 	// 1. 제네시스 블록 생성
-	genesisBlock, err := o.generateGenesisBlock(genesisConfig)
+	err := o.generateGenesisBlock(genesisConfig)
 	if err != nil {
 		return errors.Wrap(err, "failed to generate genesis block")
 	}
 
-	// 2. 네트워크 상태 초기화
-	if err := o.initializeNetworkState(genesisBlock, genesisConfig); err != nil {
-		return errors.Wrap(err, "failed to initialize network state")
-	}
-
-	// 3. 부트스트랩 완료
+	// 2. 부트스트랩 완료
 	o.isBootstrapped = true
 	o.logBootstrapSuccess(genesisConfig)
 
@@ -295,7 +234,7 @@ func (o *Orderer) BootstrapNetwork(genesisConfig *GenesisConfig) error {
 }
 
 // validateBootstrapPreconditions 부트스트랩 전제조건 검증
-func (o *Orderer) validateBootstrapPreconditions(genesisConfig *GenesisConfig) error {
+func (o *Orderer) validateBootstrapPreconditions(genesisConfig *configtx.GenesisConfig) error {
 	if o.isBootstrapped {
 		return errors.New("network is already bootstrapped")
 	}
@@ -308,215 +247,29 @@ func (o *Orderer) validateBootstrapPreconditions(genesisConfig *GenesisConfig) e
 }
 
 // generateGenesisBlock 제네시스 블록 생성
-func (o *Orderer) generateGenesisBlock(genesisConfig *GenesisConfig) (*GenesisBlock, error) {
-	generator, err := NewGenesisBlockGenerator(genesisConfig)
+func (o *Orderer) generateGenesisBlock(genesisConfig *configtx.GenesisConfig) error {
+
+	// convert configtx to JSON file
+	jsonData, err := json.Marshal(genesisConfig)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create genesis block generator")
+		return errors.Wrap(err, "failed to marshal genesis config")
 	}
 
-	genesisBlock, err := generator.GenerateGenesisBlock()
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to generate genesis block")
-	}
-
-	logger.Info("Genesis block generated successfully",
-		"blockNumber", genesisBlock.Header.Number,
-		"timestamp", time.Unix(genesisBlock.Header.Timestamp, 0).Format(time.RFC3339),
-		"systemChannel", genesisConfig.SystemChannel.Name)
-
-	return genesisBlock, nil
-}
-
-// initializeNetworkState 네트워크 상태 초기화
-func (o *Orderer) initializeNetworkState(genesisBlock *GenesisBlock, genesisConfig *GenesisConfig) error {
-	// 제네시스 블록을 첫 번째 블록으로 설정
-	o.genesisBlock = genesisBlock
-	o.systemChannel = genesisConfig.SystemChannel.Name
-
-	// 제네시스 블록을 일반 블록 형태로 변환하여 저장
-	block := o.convertGenesisBlockToBlock(genesisBlock)
-	o.blocks = append(o.blocks, block)
-	o.currentBlock = block
-
-	// 시스템 채널 생성
-	if err := o.createSystemChannel(genesisConfig); err != nil {
-		return errors.Wrap(err, "failed to create system channel")
-	}
+	// save json file
+	os.WriteFile("genesis.json", jsonData, 0644)
 
 	return nil
 }
 
 // logBootstrapSuccess 부트스트랩 성공 로그 출력
-func (o *Orderer) logBootstrapSuccess(genesisConfig *GenesisConfig) {
+func (o *Orderer) logBootstrapSuccess(genesisConfig *configtx.GenesisConfig) {
 	logger.Info("Network bootstrap completed successfully",
 		"networkName", genesisConfig.NetworkName,
-		"consortium", genesisConfig.ConsortiumName,
-		"ordererOrgs", len(genesisConfig.OrdererOrgs),
-		"peerOrgs", len(genesisConfig.PeerOrgs))
-}
-
-// convertGenesisBlockToBlock 제네시스 블록을 일반 블록으로 변환
-func (o *Orderer) convertGenesisBlockToBlock(genesisBlock *GenesisBlock) *Block {
-	// 제네시스 블록 데이터를 JSON으로 직렬화
-	data, err := json.Marshal(genesisBlock.Data)
-	if err != nil {
-		logger.Warnf("Failed to marshal genesis block data: %v", err)
-		data = []byte("genesis_block_data")
-	}
-
-	return &Block{
-		Number:       genesisBlock.Header.Number,
-		PreviousHash: genesisBlock.Header.PreviousHash,
-		Data:         data,
-		Timestamp:    time.Unix(genesisBlock.Header.Timestamp, 0),
-	}
-}
-
-// createSystemChannel 시스템 채널 생성
-func (o *Orderer) createSystemChannel(genesisConfig *GenesisConfig) error {
-	systemChannelName := genesisConfig.SystemChannel.Name
-
-	// 시스템 채널용 MSP 생성
-	systemMSP := msp.NewFabricMSP()
-	config := &msp.MSPConfig{
-		MSPID: fmt.Sprintf("%s.%s", o.mspID, systemChannelName),
-		//SigningIdentity: o.msp.GetIdentifier(),
-		// NodeOUs: &msp.FabricNodeOUs{
-		// 	Enable: true,
-		// 	OrdererOUIdentifier: &msp.FabricOUIdentifier{
-		// 		OrganizationalUnitIdentifier: DefaultOrdererOU,
-		// 	},
-		// },
-	}
-
-	if err := systemMSP.Setup(config); err != nil {
-		return errors.Wrap(err, "failed to setup system channel MSP")
-	}
-
-	// 시스템 채널 생성
-	o.channels[systemChannelName] = &Channel{
-		Name:   systemChannelName,
-		Blocks: []*Block{o.currentBlock}, // 제네시스 블록 포함
-		MSP:    systemMSP,
-	}
-
-	logger.Infof("System channel '%s' created successfully", systemChannelName)
-	return nil
-}
-
-// IsBootstrapped 네트워크 부트스트랩 상태 확인
-func (o *Orderer) IsBootstrapped() bool {
-	o.mutex.RLock()
-	defer o.mutex.RUnlock()
-	return o.isBootstrapped
-}
-
-// GetGenesisBlock 제네시스 블록 반환
-func (o *Orderer) GetGenesisBlock() *GenesisBlock {
-	o.mutex.RLock()
-	defer o.mutex.RUnlock()
-	return o.genesisBlock
-}
-
-// GetSystemChannel 시스템 채널 이름 반환
-func (o *Orderer) GetSystemChannel() string {
-	o.mutex.RLock()
-	defer o.mutex.RUnlock()
-	return o.systemChannel
-}
-
-// SaveGenesisBlock 제네시스 블록을 파일로 저장
-func (o *Orderer) SaveGenesisBlock(filePath string) error {
-	if filePath == "" {
-		return errors.New("file path cannot be empty")
-	}
-
-	o.mutex.RLock()
-	genesisBlock := o.genesisBlock
-	o.mutex.RUnlock()
-
-	if genesisBlock == nil {
-		return errors.New("no genesis block to save")
-	}
-
-	data, err := json.MarshalIndent(genesisBlock, "", "  ")
-	if err != nil {
-		return errors.Wrap(err, "failed to marshal genesis block")
-	}
-
-	if err := os.WriteFile(filePath, data, 0644); err != nil {
-		return errors.Wrap(err, "failed to write genesis block file")
-	}
-
-	logger.Infof("Genesis block saved to %s", filePath)
-	return nil
-}
-
-// LoadGenesisBlock 파일에서 제네시스 블록 로드
-func (o *Orderer) LoadGenesisBlock(filePath string) error {
-	if filePath == "" {
-		return errors.New("file path cannot be empty")
-	}
-
-	data, err := os.ReadFile(filePath)
-	if err != nil {
-		return errors.Wrap(err, "failed to read genesis block file")
-	}
-
-	var genesisBlock GenesisBlock
-	if err := json.Unmarshal(data, &genesisBlock); err != nil {
-		return errors.Wrap(err, "failed to unmarshal genesis block")
-	}
-
-	o.mutex.Lock()
-	defer o.mutex.Unlock()
-
-	o.genesisBlock = &genesisBlock
-	o.isBootstrapped = true
-
-	// 제네시스 블록을 첫 번째 블록으로 설정
-	if len(o.blocks) == 0 {
-		block := o.convertGenesisBlockToBlock(&genesisBlock)
-		o.blocks = append(o.blocks, block)
-		o.currentBlock = block
-	}
-
-	logger.Infof("Genesis block loaded from %s", filePath)
-	return nil
-}
-
-// validateChannelName validates channel name according to Fabric rules
-func validateChannelName(channelName string) error {
-	if channelName == "" {
-		return errors.New("channel name cannot be empty")
-	}
-
-	if len(channelName) < MinChannelNameLength {
-		return errors.Errorf("channel name must be at least %d characters", MinChannelNameLength)
-	}
-
-	if len(channelName) > MaxChannelNameLength {
-		return errors.Errorf("channel name cannot exceed %d characters", MaxChannelNameLength)
-	}
-
-	// Channel names must be lowercase and contain only alphanumeric characters, dots, and dashes
-	for _, char := range channelName {
-		if !((char >= 'a' && char <= 'z') || (char >= '0' && char <= '9') || char == '.' || char == '-') {
-			return errors.Errorf("channel name contains invalid character '%c'. Only lowercase letters, numbers, dots, and dashes are allowed", char)
-		}
-	}
-
-	// Channel name cannot start or end with a dot or dash
-	if channelName[0] == '.' || channelName[0] == '-' ||
-		channelName[len(channelName)-1] == '.' || channelName[len(channelName)-1] == '-' {
-		return errors.Errorf("channel name cannot start or end with '.' or '-'")
-	}
-
-	return nil
+		"ordererOrgs", len(genesisConfig.OrdererOrgs))
 }
 
 // CreateGenesisConfigFromConfigTx configtx.yaml 파일에서 GenesisConfig 생성
-func CreateGenesisConfigFromConfigTx(configTxPath string) (*GenesisConfig, error) {
+func CreateGenesisConfigFromConfigTx(configTxPath string) (*configtx.GenesisConfig, error) {
 	if configTxPath == "" {
 		return nil, errors.Errorf("configtx path cannot be empty")
 	}
@@ -533,35 +286,34 @@ func CreateGenesisConfigFromConfigTx(configTxPath string) (*GenesisConfig, error
 	}
 
 	// YAML 파싱
-	var configTx configtx.ConfigTxYAML
+	var configTx configtx.ConfigTx
 	if err := yaml.Unmarshal(data, &configTx); err != nil {
 		return nil, errors.Wrap(err, "failed to parse configtx YAML")
 	}
 
 	// ConfigTxYAML을 GenesisConfig로 변환
-	genesisConfig, err := convertConfigTxToGenesisConfig(&configTx, configTxPath)
+	genesisConfig, err := convertConfigTxToGenesisConfig(&configTx)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to convert configtx to genesis config")
 	}
 
 	logger.Infof("Successfully loaded configuration from %s", configTxPath)
-	logger.Infof("Network: %s, Consortium: %s", genesisConfig.NetworkName, genesisConfig.ConsortiumName)
-	logger.Infof("Orderer Organizations: %d, Peer Organizations: %d",
-		len(genesisConfig.OrdererOrgs), len(genesisConfig.PeerOrgs))
+	logger.Infof("Network: %s", genesisConfig.NetworkName)
+	logger.Infof("Orderer Organizations: %d", len(genesisConfig.OrdererOrgs))
 
 	return genesisConfig, nil
 }
 
 // convertConfigTxToGenesisConfig ConfigTxYAML을 GenesisConfig로 변환
-func convertConfigTxToGenesisConfig(configTx *configtx.ConfigTxYAML, configTxPath string) (*GenesisConfig, error) {
+func convertConfigTxToGenesisConfig(configTx *configtx.ConfigTx) (*configtx.GenesisConfig, error) {
 	// 기본값 설정
-	networkName := DefaultNetworkName
-	consortiumName := DefaultConsortiumName
-	systemChannelName := DefaultSystemChannel
+	networkName := configtx.DefaultNetworkName
+	consortiumName := configtx.DefaultConsortiumName
+	systemChannelName := configtx.DefaultSystemChannel
 
 	// Organization 분류
-	var ordererOrgs []*OrganizationConfig
-	var peerOrgs []*OrganizationConfig
+	var ordererOrgs []*configtx.OrganizationConfig
+	var peerOrgs []*configtx.OrganizationConfig
 
 	// 현재 작업 디렉토리 가져오기 (프로젝트 루트)
 	workingDir, err := os.Getwd()
@@ -570,11 +322,11 @@ func convertConfigTxToGenesisConfig(configTx *configtx.ConfigTxYAML, configTxPat
 	}
 
 	for _, org := range configTx.Organizations {
-		orgConfig := &OrganizationConfig{
-			Name:     org.Name,
-			ID:       org.ID,
-			MSPType:  MSPTypeBCCSP,
-			Policies: convertPoliciesFromYAML(org.Policies),
+		orgConfig := &configtx.OrganizationConfig{
+			Name:    org.Name,
+			ID:      org.ID,
+			MSPType: configtx.MSPTypeBCCSP,
+			// Policies 필드 없음
 		}
 
 		// MSPDir 경로 처리 - 상대 경로는 프로젝트 루트를 기준으로 함
@@ -604,29 +356,32 @@ func convertConfigTxToGenesisConfig(configTx *configtx.ConfigTxYAML, configTxPat
 	// BatchTimeout 처리
 	batchTimeout := configTx.Orderer.BatchTimeout
 	if batchTimeout == "" {
-		batchTimeout = DefaultBatchTimeout
+		batchTimeout = configtx.DefaultBatchTimeout
+	}
+
+	// 정책: string 그대로 저장
+	channelPolicies := map[string]*configtx.Policy{
+		"Policy": {Type: "Simple", Rule: configTx.Channel.Policies},
 	}
 
 	// GenesisConfig 생성
-	genesisConfig := &GenesisConfig{
+	genesisConfig := &configtx.GenesisConfig{
 		NetworkName:    networkName,
 		ConsortiumName: consortiumName,
 		OrdererOrgs:    ordererOrgs,
 		PeerOrgs:       peerOrgs,
-		SystemChannel: &SystemChannelConfig{
-			Name:         systemChannelName,
-			Consortium:   consortiumName,
-			Capabilities: map[string]bool{CapabilityV2_0: true},
-			Policies:     convertPoliciesFromYAML(configTx.Channel.Policies),
+		SystemChannel: &configtx.SystemChannelConfig{
+			Name:       systemChannelName,
+			Consortium: consortiumName,
+			Policies:   channelPolicies,
 		},
-		Capabilities: map[string]bool{CapabilityV2_0: true},
-		Policies:     convertPoliciesFromYAML(configTx.Channel.Policies),
+		Policies:     channelPolicies,
 		BatchSize:    batchSize,
 		BatchTimeout: batchTimeout,
 	}
 
 	// 검증
-	if err := validateGenesisConfig(genesisConfig); err != nil {
+	if err := configtx.ValidateGenesisConfig(genesisConfig); err != nil {
 		return nil, errors.Wrap(err, "generated genesis config is invalid")
 	}
 
@@ -634,23 +389,23 @@ func convertConfigTxToGenesisConfig(configTx *configtx.ConfigTxYAML, configTxPat
 }
 
 // convertPoliciesFromYAML YAML 정책을 GenesisConfig 정책으로 변환
-func convertPoliciesFromYAML(yamlPolicies map[string]configtx.PolicyYAML) map[string]*Policy {
+func convertPoliciesFromYAML(yamlPolicies map[string]configtx.Policy) map[string]*configtx.Policy {
 	if yamlPolicies == nil {
-		return make(map[string]*Policy)
+		return make(map[string]*configtx.Policy)
 	}
 
-	policies := make(map[string]*Policy)
+	policies := make(map[string]*configtx.Policy)
 	for name, yamlPolicy := range yamlPolicies {
-		policy := &Policy{
+		policy := &configtx.Policy{
 			Type: yamlPolicy.Type,
 		}
 
 		switch yamlPolicy.Type {
-		case PolicyTypeImplicitMeta:
+		case configtx.PolicyTypeImplicitMeta:
 			// ImplicitMeta 정책 파싱 (예: "ANY Readers", "MAJORITY Admins")
-			rule := parseImplicitMetaRule(yamlPolicy.Rule)
+			rule := parseImplicitMetaRule(yamlPolicy.Rule.(string))
 			policy.Rule = rule
-		case PolicyTypeSignature:
+		case configtx.PolicyTypeSignature:
 			// Signature 정책 파싱 (현재는 원본 규칙 문자열을 그대로 사용)
 			policy.Rule = yamlPolicy.Rule
 		default:
@@ -664,7 +419,7 @@ func convertPoliciesFromYAML(yamlPolicies map[string]configtx.PolicyYAML) map[st
 }
 
 // parseImplicitMetaRule ImplicitMeta 정책 규칙 파싱
-func parseImplicitMetaRule(rule string) *ImplicitMetaRule {
+func parseImplicitMetaRule(rule string) *configtx.ImplicitMetaRule {
 	// "ANY Readers", "MAJORITY Admins" 등의 형태를 파싱
 	parts := make([]string, 0, 2)
 	for _, part := range []string{"ANY", "MAJORITY", "ALL"} {
@@ -678,21 +433,21 @@ func parseImplicitMetaRule(rule string) *ImplicitMetaRule {
 	}
 
 	if len(parts) >= 2 {
-		return &ImplicitMetaRule{
+		return &configtx.ImplicitMetaRule{
 			Rule:      parts[0],
 			SubPolicy: parts[1],
 		}
 	}
 
 	// 파싱 실패 시 기본값
-	return &ImplicitMetaRule{
-		Rule:      PolicyRuleAny,
+	return &configtx.ImplicitMetaRule{
+		Rule:      configtx.PolicyRuleAny,
 		SubPolicy: "Readers",
 	}
 }
 
 // convertBatchSizeFromYAML YAML BatchSize를 GenesisConfig BatchSize로 변환
-func convertBatchSizeFromYAML(yamlBatchSize configtx.BatchSizeYAML) (*BatchSizeConfig, error) {
+func convertBatchSizeFromYAML(yamlBatchSize configtx.BatchSize) (*configtx.BatchSizeConfig, error) {
 	absoluteMaxBytes, err := parseBatchSizeBytes(yamlBatchSize.AbsoluteMaxBytes)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse absolute max bytes")
@@ -703,7 +458,7 @@ func convertBatchSizeFromYAML(yamlBatchSize configtx.BatchSizeYAML) (*BatchSizeC
 		return nil, errors.Wrap(err, "failed to parse preferred max bytes")
 	}
 
-	return &BatchSizeConfig{
+	return &configtx.BatchSizeConfig{
 		MaxMessageCount:   uint32(yamlBatchSize.MaxMessageCount),
 		AbsoluteMaxBytes:  absoluteMaxBytes,
 		PreferredMaxBytes: preferredMaxBytes,
