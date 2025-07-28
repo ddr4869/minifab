@@ -1,0 +1,36 @@
+Organizations:
+  - &OrdererOrg
+    Name: OrdererOrg
+    ID: OrdererMSP
+    MSPDir: ca/ca-client/orderer0/msp
+    OrdererEndpoints: [127.0.0.1:7050]
+  - &Org1
+    Name: Org1
+    ID: Org1MSP
+    MSPDir: ca/ca-client/peer0/msp
+    AnchorPeers:
+      - Host: 127.0.0.1
+        Port: 7051
+
+Orderer: &OrdererConfig
+  BatchTimeout: 200ms
+  BatchSize:
+    MaxMessageCount: 300
+    AbsoluteMaxBytes: 128MB
+    PreferredMaxBytes: 128MB
+
+Channel: &ChannelConfig
+  Policies: all
+  
+Profiles:
+  SystemChannel2: 
+    Orderer:
+      << : *OrdererConfig
+      Organization: *OrdererOrg 
+    Consortiums: 
+      - *Org1
+  AppChannel:
+    Application:
+      << : *ChannelConfig
+      Organizations:
+        - *Org1

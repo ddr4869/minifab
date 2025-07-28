@@ -19,6 +19,7 @@ var (
 	mspPath      string
 	genesisFile  string
 	configTxPath string
+	profile      string
 	bootstrap    bool
 )
 
@@ -54,6 +55,7 @@ func init() {
 	// Bootstrap command flags
 	bootstrapCmd.Flags().StringVar(&genesisFile, "genesis-file", "./genesis.json", "Path to save/load genesis block file")
 	bootstrapCmd.Flags().StringVar(&configTxPath, "configtx", "./config/configtx.yaml", "Path to configtx.yaml file")
+	bootstrapCmd.Flags().StringVar(&profile, "profile", "SystemChannel", "Profile name to use for genesis block")
 	bootstrapCmd.Flags().BoolVar(&bootstrap, "bootstrap", false, "Bootstrap network with genesis block")
 
 	// Add subcommands
@@ -109,25 +111,13 @@ func runBootstrap(cmd *cobra.Command, args []string) {
 		logger.Fatalf("Failed to create orderer: %v", err)
 	}
 
-	// configtx.yaml에서 제네시스 설정 생성
-	genesisConfig, err := orderer.CreateGenesisConfigFromConfigTx(configTxPath)
+	// configtx.yaml에서 제네시스 설정 생성 (profile 인자 추가)
+	genesisConfig, err := orderer.CreateGenesisConfigFromConfigTx(configTxPath, profile)
 	if err != nil {
 		logger.Fatalf("Failed to load configtx.yaml: %v", err)
 	}
 
 	logger.Info("Successfully loaded configuration from configtx.yaml")
-
-	// configtx.yaml에서 로드한 설정에서 실제 MSP 경로와 ID로 업데이트
-	// (명령행 인수가 우선순위를 가짐)
-	for _, ordererOrg := range genesisConfig.OrdererOrgs {
-		if ordererOrg.ID == mspID || len(genesisConfig.OrdererOrgs) == 1 {
-			ordererOrg.MSPDir = mspPath
-			ordererOrg.ID = mspID
-			break
-		}
-	}
-
-	logger.Infof("genesisConfig: %+v", genesisConfig)
 
 	// 네트워크 부트스트랩 실행
 	if err := o.BootstrapNetwork(genesisConfig); err != nil {
@@ -135,7 +125,6 @@ func runBootstrap(cmd *cobra.Command, args []string) {
 	}
 
 	logger.Info("Network bootstrap completed successfully!")
-	logger.Infof("Genesis block saved to: %s", genesisFile)
 	logger.Infof("Configuration loaded from: %s", configTxPath)
 	logger.Info("You can now start the orderer with: ./bin/orderer")
 }

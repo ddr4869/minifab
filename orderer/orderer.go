@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"sync"
 	"time"
 
@@ -54,7 +53,6 @@ type Orderer struct {
 	channels       map[string]*common.Channel
 	msp            msp.MSP
 	mspID          string
-	genesisBlock   *configtx.GenesisConfig
 	systemChannel  string
 	isBootstrapped bool
 }
@@ -210,7 +208,7 @@ func (o *Orderer) GetChannel(channelName string) (*common.Channel, error) {
 }
 
 // BootstrapNetwork 네트워크 부트스트랩 (제네시스 블록 생성)
-func (o *Orderer) BootstrapNetwork(genesisConfig *configtx.GenesisConfig) error {
+func (o *Orderer) BootstrapNetwork(genesisConfig *configtx.SystemChannelInfo) error {
 	o.mutex.Lock()
 	defer o.mutex.Unlock()
 
@@ -220,21 +218,17 @@ func (o *Orderer) BootstrapNetwork(genesisConfig *configtx.GenesisConfig) error 
 
 	logger.Info("Starting network bootstrap process")
 
-	// 1. 제네시스 블록 생성
 	err := o.generateGenesisBlock(genesisConfig)
 	if err != nil {
 		return errors.Wrap(err, "failed to generate genesis block")
 	}
 
-	// 2. 부트스트랩 완료
 	o.isBootstrapped = true
-	o.logBootstrapSuccess(genesisConfig)
-
 	return nil
 }
 
 // validateBootstrapPreconditions 부트스트랩 전제조건 검증
-func (o *Orderer) validateBootstrapPreconditions(genesisConfig *configtx.GenesisConfig) error {
+func (o *Orderer) validateBootstrapPreconditions(genesisConfig *configtx.SystemChannelInfo) error {
 	if o.isBootstrapped {
 		return errors.New("network is already bootstrapped")
 	}
@@ -247,8 +241,7 @@ func (o *Orderer) validateBootstrapPreconditions(genesisConfig *configtx.Genesis
 }
 
 // generateGenesisBlock 제네시스 블록 생성
-func (o *Orderer) generateGenesisBlock(genesisConfig *configtx.GenesisConfig) error {
-
+func (o *Orderer) generateGenesisBlock(genesisConfig *configtx.SystemChannelInfo) error {
 	// convert configtx to JSON file
 	jsonData, err := json.Marshal(genesisConfig)
 	if err != nil {
@@ -261,15 +254,8 @@ func (o *Orderer) generateGenesisBlock(genesisConfig *configtx.GenesisConfig) er
 	return nil
 }
 
-// logBootstrapSuccess 부트스트랩 성공 로그 출력
-func (o *Orderer) logBootstrapSuccess(genesisConfig *configtx.GenesisConfig) {
-	logger.Info("Network bootstrap completed successfully",
-		"networkName", genesisConfig.NetworkName,
-		"ordererOrgs", len(genesisConfig.OrdererOrgs))
-}
-
-// CreateGenesisConfigFromConfigTx configtx.yaml 파일에서 GenesisConfig 생성
-func CreateGenesisConfigFromConfigTx(configTxPath string) (*configtx.GenesisConfig, error) {
+// CreateGenesisConfigFromConfigTx configtx.yaml 파일에서 ConfigTx 생성
+func CreateGenesisConfigFromConfigTx(configTxPath string, profile string) (*configtx.SystemChannelInfo, error) {
 	if configTxPath == "" {
 		return nil, errors.Errorf("configtx path cannot be empty")
 	}
@@ -291,208 +277,13 @@ func CreateGenesisConfigFromConfigTx(configTxPath string) (*configtx.GenesisConf
 		return nil, errors.Wrap(err, "failed to parse configtx YAML")
 	}
 
-	// ConfigTxYAML을 GenesisConfig로 변환
-	genesisConfig, err := convertConfigTxToGenesisConfig(&configTx)
+	// ConfigTxYAML을 ConfigTx로 변환
+	genesisConfig, err := configTx.GetSystemChannelInfo(profile)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to convert configtx to genesis config")
 	}
 
-	logger.Infof("Successfully loaded configuration from %s", configTxPath)
-	logger.Infof("Network: %s", genesisConfig.NetworkName)
-	logger.Infof("Orderer Organizations: %d", len(genesisConfig.OrdererOrgs))
+	logger.Infof("Successfully loaded configuration from %s with profile %s", configTxPath, profile)
 
 	return genesisConfig, nil
-}
-
-// convertConfigTxToGenesisConfig ConfigTxYAML을 GenesisConfig로 변환
-func convertConfigTxToGenesisConfig(configTx *configtx.ConfigTx) (*configtx.GenesisConfig, error) {
-	// 기본값 설정
-	networkName := configtx.DefaultNetworkName
-	consortiumName := configtx.DefaultConsortiumName
-	systemChannelName := configtx.DefaultSystemChannel
-
-	// Organization 분류
-	var ordererOrgs []*configtx.OrganizationConfig
-	var peerOrgs []*configtx.OrganizationConfig
-
-	// 현재 작업 디렉토리 가져오기 (프로젝트 루트)
-	workingDir, err := os.Getwd()
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to get current working directory")
-	}
-
-	for _, org := range configTx.Organizations {
-		orgConfig := &configtx.OrganizationConfig{
-			Name:    org.Name,
-			ID:      org.ID,
-			MSPType: configtx.MSPTypeBCCSP,
-			// Policies 필드 없음
-		}
-
-		// MSPDir 경로 처리 - 상대 경로는 프로젝트 루트를 기준으로 함
-		if filepath.IsAbs(org.MSPDir) {
-			orgConfig.MSPDir = org.MSPDir
-		} else {
-			// 상대 경로는 프로젝트 루트(workingDir)를 기준으로 함
-			orgConfig.MSPDir = filepath.Join(workingDir, org.MSPDir)
-		}
-
-		// OrdererEndpoints가 있으면 orderer 조직
-		if len(org.OrdererEndpoints) > 0 {
-			ordererOrgs = append(ordererOrgs, orgConfig)
-		}
-		// AnchorPeers가 있으면 peer 조직
-		if len(org.AnchorPeers) > 0 {
-			peerOrgs = append(peerOrgs, orgConfig)
-		}
-	}
-
-	// BatchSize 변환
-	batchSize, err := convertBatchSizeFromYAML(configTx.Orderer.BatchSize)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to convert batch size")
-	}
-
-	// BatchTimeout 처리
-	batchTimeout := configTx.Orderer.BatchTimeout
-	if batchTimeout == "" {
-		batchTimeout = configtx.DefaultBatchTimeout
-	}
-
-	// 정책: string 그대로 저장
-	channelPolicies := map[string]*configtx.Policy{
-		"Policy": {Type: "Simple", Rule: configTx.Channel.Policies},
-	}
-
-	// GenesisConfig 생성
-	genesisConfig := &configtx.GenesisConfig{
-		NetworkName:    networkName,
-		ConsortiumName: consortiumName,
-		OrdererOrgs:    ordererOrgs,
-		PeerOrgs:       peerOrgs,
-		SystemChannel: &configtx.SystemChannelConfig{
-			Name:       systemChannelName,
-			Consortium: consortiumName,
-			Policies:   channelPolicies,
-		},
-		Policies:     channelPolicies,
-		BatchSize:    batchSize,
-		BatchTimeout: batchTimeout,
-	}
-
-	// 검증
-	if err := configtx.ValidateGenesisConfig(genesisConfig); err != nil {
-		return nil, errors.Wrap(err, "generated genesis config is invalid")
-	}
-
-	return genesisConfig, nil
-}
-
-// convertPoliciesFromYAML YAML 정책을 GenesisConfig 정책으로 변환
-func convertPoliciesFromYAML(yamlPolicies map[string]configtx.Policy) map[string]*configtx.Policy {
-	if yamlPolicies == nil {
-		return make(map[string]*configtx.Policy)
-	}
-
-	policies := make(map[string]*configtx.Policy)
-	for name, yamlPolicy := range yamlPolicies {
-		policy := &configtx.Policy{
-			Type: yamlPolicy.Type,
-		}
-
-		switch yamlPolicy.Type {
-		case configtx.PolicyTypeImplicitMeta:
-			// ImplicitMeta 정책 파싱 (예: "ANY Readers", "MAJORITY Admins")
-			rule := parseImplicitMetaRule(yamlPolicy.Rule.(string))
-			policy.Rule = rule
-		case configtx.PolicyTypeSignature:
-			// Signature 정책 파싱 (현재는 원본 규칙 문자열을 그대로 사용)
-			policy.Rule = yamlPolicy.Rule
-		default:
-			// 기타 정책 타입
-			policy.Rule = yamlPolicy.Rule
-		}
-		policies[name] = policy
-	}
-
-	return policies
-}
-
-// parseImplicitMetaRule ImplicitMeta 정책 규칙 파싱
-func parseImplicitMetaRule(rule string) *configtx.ImplicitMetaRule {
-	// "ANY Readers", "MAJORITY Admins" 등의 형태를 파싱
-	parts := make([]string, 0, 2)
-	for _, part := range []string{"ANY", "MAJORITY", "ALL"} {
-		if len(rule) > len(part) && rule[:len(part)] == part {
-			parts = append(parts, part)
-			if len(rule) > len(part)+1 {
-				parts = append(parts, rule[len(part)+1:])
-			}
-			break
-		}
-	}
-
-	if len(parts) >= 2 {
-		return &configtx.ImplicitMetaRule{
-			Rule:      parts[0],
-			SubPolicy: parts[1],
-		}
-	}
-
-	// 파싱 실패 시 기본값
-	return &configtx.ImplicitMetaRule{
-		Rule:      configtx.PolicyRuleAny,
-		SubPolicy: "Readers",
-	}
-}
-
-// convertBatchSizeFromYAML YAML BatchSize를 GenesisConfig BatchSize로 변환
-func convertBatchSizeFromYAML(yamlBatchSize configtx.BatchSize) (*configtx.BatchSizeConfig, error) {
-	absoluteMaxBytes, err := parseBatchSizeBytes(yamlBatchSize.AbsoluteMaxBytes)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to parse absolute max bytes")
-	}
-
-	preferredMaxBytes, err := parseBatchSizeBytes(yamlBatchSize.PreferredMaxBytes)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to parse preferred max bytes")
-	}
-
-	return &configtx.BatchSizeConfig{
-		MaxMessageCount:   uint32(yamlBatchSize.MaxMessageCount),
-		AbsoluteMaxBytes:  absoluteMaxBytes,
-		PreferredMaxBytes: preferredMaxBytes,
-	}, nil
-}
-
-// parseBatchSizeBytes 크기 문자열을 바이트 수로 변환 ("128 MB" -> 134217728)
-func parseBatchSizeBytes(sizeStr string) (uint32, error) {
-	if sizeStr == "" {
-		return 0, errors.New("size string cannot be empty")
-	}
-
-	var value uint32
-	var unit string
-
-	// 숫자와 단위 분리
-	n, err := fmt.Sscanf(sizeStr, "%d %s", &value, &unit)
-	if err != nil || n != 2 {
-		// 단위 없이 숫자만 있는 경우
-		if n, err := fmt.Sscanf(sizeStr, "%d", &value); err != nil || n != 1 {
-			return 0, errors.Errorf("failed to parse size: %s", sizeStr)
-		}
-		return value, nil
-	}
-
-	// 단위에 따른 배수 적용
-	switch unit {
-	case "KB":
-		return value * 1024, nil
-	case "MB":
-		return value * 1024 * 1024, nil
-	case "GB":
-		return value * 1024 * 1024 * 1024, nil
-	default:
-		return 0, errors.Errorf("unsupported size unit: %s", unit)
-	}
 }
