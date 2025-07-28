@@ -2,7 +2,7 @@ package common
 
 import (
 	"github.com/ddr4869/minifab/common/logger"
-	"github.com/ddr4869/minifab/common/proto"
+	pb_orderer "github.com/ddr4869/minifab/proto/orderer"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
@@ -18,7 +18,7 @@ type OrdererService interface {
 
 type OrdererClient struct {
 	conn   *grpc.ClientConn
-	client proto.OrdererServiceClient
+	client pb_orderer.OrdererServiceClient
 }
 
 func NewOrdererClient(address string) (*OrdererClient, error) {
@@ -37,7 +37,7 @@ func NewOrdererClient(address string) (*OrdererClient, error) {
 		logger.Infof("Connection to orderer at %s is %s", address, state.String())
 	}
 
-	client := proto.NewOrdererServiceClient(conn)
+	client := pb_orderer.NewOrdererServiceClient(conn)
 
 	return &OrdererClient{
 		conn:   conn,
@@ -46,6 +46,6 @@ func NewOrdererClient(address string) (*OrdererClient, error) {
 }
 
 // GetClient returns the internal proto client for direct gRPC calls
-func (oc *OrdererClient) GetClient() proto.OrdererServiceClient {
+func (oc *OrdererClient) GetClient() pb_orderer.OrdererServiceClient {
 	return oc.client
 }

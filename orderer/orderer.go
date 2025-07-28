@@ -12,6 +12,8 @@ import (
 	"github.com/ddr4869/minifab/common/configtx"
 	"github.com/ddr4869/minifab/common/logger"
 	"github.com/ddr4869/minifab/common/msp"
+	pb_common "github.com/ddr4869/minifab/proto/common"
+	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
 )
 
@@ -38,16 +40,9 @@ const (
 	MinChannelNameLength = 1
 )
 
-type Block struct {
-	Number       uint64
-	PreviousHash []byte
-	Data         []byte
-	Timestamp    time.Time
-}
-
 type Orderer struct {
-	blocks         []*Block
-	currentBlock   *Block
+	blocks         []*pb_common.Block
+	currentBlock   *pb_common.Block
 	mutex          sync.RWMutex
 	channels       map[string]*common.Channel
 	msp            msp.MSP
@@ -80,14 +75,14 @@ func NewOrderer(mspID string, mspPath string) (*Orderer, error) {
 	// }
 
 	return &Orderer{
-		blocks:   make([]*Block, 0),
+		blocks:   make([]*pb_common.Block, 0),
 		channels: make(map[string]*common.Channel),
 		msp:      fabricMSP,
 		mspID:    mspID,
 	}, nil
 }
 
-func (o *Orderer) CreateBlock(data []byte) (*Block, error) {
+func (o *Orderer) CreateBlock(data []byte) (*pb_common.Block, error) {
 	if len(data) < MinBlockDataSize {
 		return nil, errors.New("block data cannot be empty")
 	}
@@ -99,17 +94,20 @@ func (o *Orderer) CreateBlock(data []byte) (*Block, error) {
 	o.mutex.Lock()
 	defer o.mutex.Unlock()
 
-	block := &Block{
-		Number:       uint64(len(o.blocks)),
-		PreviousHash: o.getLastBlockHash(),
-		Data:         data,
-		Timestamp:    time.Now(),
+	block := &pb_common.Block{
+		Header: &pb_common.BlockHeader{
+			Number:       uint64(len(o.blocks)),
+			PreviousHash: o.getLastBlockHash(),
+			HeaderType:   pb_common.BlockType_BLOCK_TYPE_CONFIG,
+		},
+		Data: &pb_common.BlockData{
+			Transactions: [][]byte{data},
+		},
 	}
 
 	o.blocks = append(o.blocks, block)
 	o.currentBlock = block
 
-	logger.Debugf("Created block %d with %d bytes of data", block.Number, len(data))
 	return block, nil
 }
 
@@ -123,25 +121,14 @@ func (o *Orderer) getLastBlockHash() []byte {
 }
 
 // calculateBlockHash calculates the hash of a block
-func (o *Orderer) calculateBlockHash(block *Block) []byte {
+func (o *Orderer) calculateBlockHash(block *pb_common.Block) []byte {
 	if block == nil {
 		return nil
 	}
 
-	// Create a deterministic representation of the block for hashing
-	blockData := fmt.Sprintf("%d:%x:%s",
-		block.Number,
-		block.PreviousHash,
-		block.Timestamp.Format(time.RFC3339Nano))
-
-	// Add block data if present
-	if len(block.Data) > 0 {
-		blockData += ":" + string(block.Data)
-	}
-
-	// Use SHA256 for hashing (consistent with Fabric)
-	hash := sha256.Sum256([]byte(blockData))
-	return hash[:]
+	// TODO: 블록 해시 계산 로직 추가
+	hash := sha256.New()
+	return hash.Sum(nil)
 }
 
 // GetMSP MSP 인스턴스 반환
@@ -166,7 +153,7 @@ func (o *Orderer) GetBlockCount() uint64 {
 }
 
 // GetBlock returns a block by number
-func (o *Orderer) GetBlock(blockNumber uint64) (*Block, error) {
+func (o *Orderer) GetBlock(blockNumber uint64) (*pb_common.Block, error) {
 	o.mutex.RLock()
 	defer o.mutex.RUnlock()
 
@@ -239,14 +226,75 @@ func (o *Orderer) validateBootstrapPreconditions(genesisConfig *configtx.SystemC
 }
 
 func (o *Orderer) generateGenesisBlock(genesisConfig *configtx.SystemChannelInfo) error {
-	// convert configtx to JSON file
-	jsonData, err := json.Marshal(genesisConfig)
+	// 설정 트랜잭션 데이터 직렬화
+	configTxData, err := json.Marshal(genesisConfig)
 	if err != nil {
 		return errors.Wrap(err, "failed to marshal genesis config")
 	}
 
-	// save json file
-	os.WriteFile("genesis.json", jsonData, 0644)
+	// 블록 헤더 생성
+	header := &pb_common.BlockHeader{
+		Number:       0,   // 제네시스 블록은 항상 0
+		PreviousHash: nil, // 제네시스 블록은 이전 해시가 없음
+		HeaderType:   pb_common.BlockType_BLOCK_TYPE_CONFIG,
+	}
 
+	// 블록 데이터 생성
+	blockData := &pb_common.BlockData{
+		Transactions: [][]byte{
+			configTxData, // 설정 트랜잭션 데이터
+		},
+	}
+
+	// 블록 메타데이터 생성
+	metadata := &pb_common.BlockMetadata{
+		// CreatorCertificate: o.msp.GetIdentifier().Id,
+		CreatorSignature: []byte{},  // 실제 서명 로직 필요
+		ValidationBitmap: []byte{1}, // 제네시스 블록은 항상 유효
+		AccumulatedHash:  []byte{},  // 제네시스 블록은 빈 해시
+	}
+
+	// 블록 생성
+	block := &pb_common.Block{
+		Header:   header,
+		Data:     blockData,
+		Metadata: metadata,
+	}
+
+	// 현재 블록 해시 계산
+	blockHash := o.calculateBlockHash(block)
+	header.CurrentBlockHash = blockHash
+
+	// 제네시스 블록 구조체 생성
+	genesisBlock := &pb_common.GenesisBlock{
+		Block:       block,
+		ChannelId:   "SYSTEM_CHANNEL",
+		StoredAt:    time.Now().Format(time.RFC3339),
+		IsCommitted: true,
+		BlockHash:   fmt.Sprintf("%x", blockHash),
+	}
+
+	// protobuf로 직렬화
+	protoData, err := proto.Marshal(genesisBlock)
+	if err != nil {
+		return errors.Wrap(err, "failed to marshal genesis block")
+	}
+
+	// 파일에 저장 (protobuf 바이너리 형태)
+	if err := os.WriteFile("./blocks/genesis.block", protoData, GenesisFilePermissions); err != nil {
+		return errors.Wrap(err, "failed to write genesis block file")
+	}
+
+	// JSON 형태로도 저장 (디버깅용)
+	jsonData, err := json.MarshalIndent(genesisBlock, "", "  ")
+	if err != nil {
+		return errors.Wrap(err, "failed to marshal genesis block to JSON")
+	}
+
+	if err := os.WriteFile("genesis.json", jsonData, GenesisFilePermissions); err != nil {
+		return errors.Wrap(err, "failed to write genesis JSON file")
+	}
+
+	logger.Info("Genesis block created and saved successfully")
 	return nil
 }

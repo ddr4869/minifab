@@ -1,0 +1,4 @@
+
+ß
+$ ã°ÄB˜üšûôÈ™o¹$'®Aäd›“L¤•™xR¸U ±
+®{"Orderer":{"BatchTimeout":"200ms","BatchSize":{"MaxMessageCount":300,"AbsoluteMaxBytes":"128MB","PreferredMaxBytes":"128MB"},"Organization":{"Name":"OrdererOrg","ID":"OrdererMSP","MSPDir":"ca/ca-client/orderer0/msp","OrdererEndpoints":["127.0.0.1:7050"],"AnchorPeers":null}},"Consortiums":[{"Name":"Org1","ID":"Org1MSP","MSPDir":"ca/ca-client/peer0/msp","OrdererEndpoints":null,"AnchorPeers":[{"Host":"127.0.0.1","Port":7051}]}]}SYSTEM_CHANNEL2025-07-28T17:44:51+09:00 *@e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855

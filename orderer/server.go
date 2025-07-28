@@ -10,13 +10,14 @@ import (
 	"sync"
 
 	"github.com/ddr4869/minifab/common/logger"
-	pb "github.com/ddr4869/minifab/common/proto"
+	pb_common "github.com/ddr4869/minifab/proto/common"
+	pb_orderer "github.com/ddr4869/minifab/proto/orderer"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 )
 
 type OrdererServer struct {
-	pb.UnimplementedOrdererServiceServer
+	pb_orderer.UnimplementedOrdererServiceServer
 	orderer *Orderer
 	server  *grpc.Server
 	mutex   sync.RWMutex
@@ -28,60 +29,53 @@ func NewOrdererServer(orderer *Orderer) *OrdererServer {
 	}
 }
 
-func (s *OrdererServer) SubmitTransaction(ctx context.Context, req *pb.Transaction) (*pb.TransactionResponse, error) {
+// func (s *OrdererServer) SubmitTransaction(ctx context.Context, req *pb_orderer.Transaction) (*pb_orderer.TransactionResponse, error) {
+// 	s.mutex.Lock()
+// 	defer s.mutex.Unlock()
+
+// 	// 트랜잭션을 블록에 추가
+// 	block, err := s.orderer.CreateBlock(req.Payload)
+// 	if err != nil {
+// 		return &pb_orderer.TransactionResponse{
+// 			Status:        pb_orderer.StatusCode_INTERNAL_ERROR,
+// 			Message:       fmt.Sprintf("Failed to create block: %v", err),
+// 			TransactionId: req.Id,
+// 		}, nil
+// 	}
+
+// 	return &pb_orderer.TransactionResponse{
+// 		Status:        pb_orderer.StatusCode_OK,
+// 		Message:       fmt.Sprintf("Transaction %s added to block %d", req.Id, block.Header.Number),
+// 		TransactionId: req.Id,
+// 	}, nil
+// }
+
+// func (s *OrdererServer) GetBlock(ctx context.Context, req *pb_orderer.BlockRequest) (*pb_orderer.Block, error) {
+// 	logger.Infof("GetBlock request for block %d on channel %s", req.BlockNumber, req.ChannelId)
+
+// 	// Convert to protobuf format
+// 	pb_ordererBlock := &pb_orderer.Block{
+// 		Number:       block.Number,
+// 		PreviousHash: block.PreviousHash,
+// 		DataHash:     block.Data, // Changed from Data to DataHash
+// 		Timestamp:    block.Timestamp.Unix(),
+// 		ChannelId:    req.ChannelId,
+// 	}
+
+// 	logger.Infof("Successfully retrieved block %d", req.BlockNumber)
+// 	return pb_ordererBlock, nil
+// }
+
+func (s *OrdererServer) CreateChannel(ctx context.Context, req *pb_orderer.ChannelRequest) (*pb_orderer.ChannelResponse, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	// 트랜잭션을 블록에 추가
-	block, err := s.orderer.CreateBlock(req.Payload)
-	if err != nil {
-		return &pb.TransactionResponse{
-			Status:        pb.StatusCode_INTERNAL_ERROR,
-			Message:       fmt.Sprintf("Failed to create block: %v", err),
-			TransactionId: req.Id,
-		}, nil
-	}
-
-	return &pb.TransactionResponse{
-		Status:        pb.StatusCode_OK,
-		Message:       fmt.Sprintf("Transaction %s added to block %d", req.Id, block.Number),
-		TransactionId: req.Id,
-	}, nil
-}
-
-func (s *OrdererServer) GetBlock(ctx context.Context, req *pb.BlockRequest) (*pb.Block, error) {
-	logger.Infof("GetBlock request for block %d on channel %s", req.BlockNumber, req.ChannelId)
-
-	// Get block from orderer
-	block, err := s.orderer.GetBlock(req.BlockNumber)
-	if err != nil {
-		logger.Errorf("Failed to get block %d: %v", req.BlockNumber, err)
-		return nil, errors.Errorf("block %d not found", req.BlockNumber)
-	}
-
-	// Convert to protobuf format
-	pbBlock := &pb.Block{
-		Number:       block.Number,
-		PreviousHash: block.PreviousHash,
-		DataHash:     block.Data, // Changed from Data to DataHash
-		Timestamp:    block.Timestamp.Unix(),
-		ChannelId:    req.ChannelId,
-	}
-
-	logger.Infof("Successfully retrieved block %d", req.BlockNumber)
-	return pbBlock, nil
-}
-
-func (s *OrdererServer) CreateChannel(ctx context.Context, req *pb.ChannelRequest) (*pb.ChannelResponse, error) {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
-	logger.Infof("[Orderer] Creating channel: %s with profile: %s", req.ChannelName, req.ProfileName)
+	logger.Infof("[Orderer] Creating channel: %s with profile: %s", req.ChannelName, req.Profile)
 
 	// 채널이 이미 존재하는지 확인
 	if _, exists := s.orderer.channels[req.ChannelName]; exists {
-		return &pb.ChannelResponse{
-			Status:    pb.StatusCode_ALREADY_EXISTS,
+		return &pb_orderer.ChannelResponse{
+			Status:    pb_common.StatusCode_OK,
 			Message:   fmt.Sprintf("Channel %s already exists", req.ChannelName),
 			ChannelId: req.ChannelName,
 		}, nil
@@ -94,7 +88,7 @@ func (s *OrdererServer) CreateChannel(ctx context.Context, req *pb.ChannelReques
 	}
 
 	// Profile 이름 설정 (기본값 사용)
-	profileName := req.ProfileName
+	profileName := req.Profile
 	if profileName == "" {
 		profileName = "OrgsChannel0" // 기본 채널 프로파일
 	}
@@ -103,8 +97,8 @@ func (s *OrdererServer) CreateChannel(ctx context.Context, req *pb.ChannelReques
 	// channelConfig, err := s.createChannelFromProfile(configTxPath, profileName, req.ChannelName)
 	// if err != nil {
 	// 	logger.Errorf("Failed to create channel config from profile: %v", err)
-	// 	return &pb.ChannelResponse{
-	// 		Status:  pb.StatusCode_CONFIGURATION_ERROR,
+	// 	return &pb_orderer.ChannelResponse{
+	// 		Status:  pb_orderer.StatusCode_CONFIGURATION_ERROR,
 	// 		Message: fmt.Sprintf("Failed to create channel config: %v", err),
 	// 	}, nil
 	// }
@@ -125,27 +119,27 @@ func (s *OrdererServer) CreateChannel(ctx context.Context, req *pb.ChannelReques
 	// }
 
 	// logger.Infof("Channel %s created successfully from profile %s", req.ChannelName, profileName)
-	return &pb.ChannelResponse{
-		Status:    pb.StatusCode_OK,
+	return &pb_orderer.ChannelResponse{
+		Status:    pb_common.StatusCode_OK,
 		Message:   fmt.Sprintf("Channel %s created successfully from profile %s", req.ChannelName, profileName),
 		ChannelId: req.ChannelName,
 	}, nil
 }
 
 // BroadcastBlock broadcasts a block to all peers in the network
-// func (s *OrdererServer) BroadcastBlock(ctx context.Context, req *pb.BroadcastRequest) (*pb.BroadcastResponse, error) {
+// func (s *OrdererServer) BroadcastBlock(ctx context.Context, req *pb_orderer.BroadcastRequest) (*pb_orderer.BroadcastResponse, error) {
 // 	logger.Infof("[Orderer] Broadcasting block %d to channel %s", req.Block.Number, req.ChannelId)
 
 // 	if req.Block == nil {
-// 		return &pb.BroadcastResponse{
-// 			Status:  pb.StatusCode_INVALID_ARGUMENT,
+// 		return &pb_orderer.BroadcastResponse{
+// 			Status:  pb_orderer.StatusCode_INVALID_ARGUMENT,
 // 			Message: "Block cannot be nil",
 // 		}, nil
 // 	}
 
 // 	if req.ChannelId == "" {
-// 		return &pb.BroadcastResponse{
-// 			Status:  pb.StatusCode_INVALID_ARGUMENT,
+// 		return &pb_orderer.BroadcastResponse{
+// 			Status:  pb_orderer.StatusCode_INVALID_ARGUMENT,
 // 			Message: "Channel ID cannot be empty",
 // 		}, nil
 // 	}
@@ -156,8 +150,8 @@ func (s *OrdererServer) CreateChannel(ctx context.Context, req *pb.ChannelReques
 // 	s.mutex.RUnlock()
 
 // 	if !exists {
-// 		return &pb.BroadcastResponse{
-// 			Status:  pb.StatusCode_CHANNEL_NOT_FOUND,
+// 		return &pb_orderer.BroadcastResponse{
+// 			Status:  pb_orderer.StatusCode_CHANNEL_NOT_FOUND,
 // 			Message: fmt.Sprintf("Channel %s not found", req.ChannelId),
 // 		}, nil
 // 	}
@@ -176,16 +170,16 @@ func (s *OrdererServer) CreateChannel(ctx context.Context, req *pb.ChannelReques
 // 		}
 // 	}
 
-// 	status := pb.StatusCode_OK
+// 	status := pb_orderer.StatusCode_OK
 // 	message := fmt.Sprintf("Block %d broadcasted to %d peers", req.Block.Number, successCount)
 
 // 	if len(failedPeers) > 0 {
-// 		status = pb.StatusCode_INTERNAL_ERROR
+// 		status = pb_orderer.StatusCode_INTERNAL_ERROR
 // 		message = fmt.Sprintf("Block %d partially broadcasted: %d successful, %d failed",
 // 			req.Block.Number, successCount, len(failedPeers))
 // 	}
 
-// 	return &pb.BroadcastResponse{
+// 	return &pb_orderer.BroadcastResponse{
 // 		Status:        status,
 // 		Message:       message,
 // 		PeersNotified: successCount,
@@ -194,19 +188,19 @@ func (s *OrdererServer) CreateChannel(ctx context.Context, req *pb.ChannelReques
 // }
 
 // BroadcastToChannel broadcasts a block to all peers in a specific channel
-// func (s *OrdererServer) BroadcastToChannel(ctx context.Context, req *pb.ChannelBroadcastRequest) (*pb.ChannelBroadcastResponse, error) {
+// func (s *OrdererServer) BroadcastToChannel(ctx context.Context, req *pb_orderer.ChannelBroadcastRequest) (*pb_orderer.ChannelBroadcastResponse, error) {
 // 	logger.Infof("[Orderer] Broadcasting block %d to channel %s", req.Block.Number, req.ChannelId)
 
 // 	if req.Block == nil {
-// 		return &pb.ChannelBroadcastResponse{
-// 			Status:  pb.StatusCode_INVALID_ARGUMENT,
+// 		return &pb_orderer.ChannelBroadcastResponse{
+// 			Status:  pb_orderer.StatusCode_INVALID_ARGUMENT,
 // 			Message: "Block cannot be nil",
 // 		}, nil
 // 	}
 
 // 	if req.ChannelId == "" {
-// 		return &pb.ChannelBroadcastResponse{
-// 			Status:  pb.StatusCode_INVALID_ARGUMENT,
+// 		return &pb_orderer.ChannelBroadcastResponse{
+// 			Status:  pb_orderer.StatusCode_INVALID_ARGUMENT,
 // 			Message: "Channel ID cannot be empty",
 // 		}, nil
 // 	}
@@ -217,8 +211,8 @@ func (s *OrdererServer) CreateChannel(ctx context.Context, req *pb.ChannelReques
 // 	s.mutex.RUnlock()
 
 // 	if !exists {
-// 		return &pb.ChannelBroadcastResponse{
-// 			Status:  pb.StatusCode_CHANNEL_NOT_FOUND,
+// 		return &pb_orderer.ChannelBroadcastResponse{
+// 			Status:  pb_orderer.StatusCode_CHANNEL_NOT_FOUND,
 // 			Message: fmt.Sprintf("Channel %s not found", req.ChannelId),
 // 		}, nil
 // 	}
@@ -233,7 +227,7 @@ func (s *OrdererServer) CreateChannel(ctx context.Context, req *pb.ChannelReques
 // 	}
 
 // 	// Broadcast to all peers
-// 	var results []*pb.BroadcastResult
+// 	var results []*pb_orderer.BroadcastResult
 // 	var successCount, failedCount int32
 
 // 	for _, peerEndpoint := range peerEndpoints {
@@ -241,18 +235,18 @@ func (s *OrdererServer) CreateChannel(ctx context.Context, req *pb.ChannelReques
 // 		err := s.broadcastToPeer(ctx, peerEndpoint, req.Block)
 // 		responseTime := time.Since(startTime).Milliseconds()
 
-// 		result := &pb.BroadcastResult{
+// 		result := &pb_orderer.BroadcastResult{
 // 			PeerEndpoint:   peerEndpoint,
 // 			ResponseTimeMs: responseTime,
 // 		}
 
 // 		if err != nil {
-// 			result.Status = pb.StatusCode_NETWORK_ERROR
+// 			result.Status = pb_orderer.StatusCode_NETWORK_ERROR
 // 			result.ErrorMessage = err.Error()
 // 			failedCount++
 // 			logger.Errorf("Failed to broadcast to peer %s: %v", peerEndpoint, err)
 // 		} else {
-// 			result.Status = pb.StatusCode_OK
+// 			result.Status = pb_orderer.StatusCode_OK
 // 			successCount++
 // 			logger.Infof("Successfully broadcasted block %d to peer %s in %dms",
 // 				req.Block.Number, peerEndpoint, responseTime)
@@ -272,21 +266,21 @@ func (s *OrdererServer) CreateChannel(ctx context.Context, req *pb.ChannelReques
 // 	channel.Blocks = append(channel.Blocks, internalBlock)
 // 	s.mutex.Unlock()
 
-// 	status := pb.StatusCode_OK
+// 	status := pb_orderer.StatusCode_OK
 // 	message := fmt.Sprintf("Block %d broadcasted successfully", req.Block.Number)
 
 // 	if failedCount > 0 {
 // 		if successCount == 0 {
-// 			status = pb.StatusCode_NETWORK_ERROR
+// 			status = pb_orderer.StatusCode_NETWORK_ERROR
 // 			message = fmt.Sprintf("Failed to broadcast block %d to all peers", req.Block.Number)
 // 		} else {
-// 			status = pb.StatusCode_INTERNAL_ERROR
+// 			status = pb_orderer.StatusCode_INTERNAL_ERROR
 // 			message = fmt.Sprintf("Block %d partially broadcasted: %d successful, %d failed",
 // 				req.Block.Number, successCount, failedCount)
 // 		}
 // 	}
 
-// 	return &pb.ChannelBroadcastResponse{
+// 	return &pb_orderer.ChannelBroadcastResponse{
 // 		Status:               status,
 // 		Message:              message,
 // 		SuccessfulBroadcasts: successCount,
@@ -296,7 +290,7 @@ func (s *OrdererServer) CreateChannel(ctx context.Context, req *pb.ChannelReques
 // }
 
 // broadcastToPeer sends a block to a specific peer endpoint
-// func (s *OrdererServer) broadcastToPeer(ctx context.Context, peerEndpoint string, block *pb.Block) error {
+// func (s *OrdererServer) broadcastToPeer(ctx context.Context, peerEndpoint string, block *pb_orderer.Block) error {
 // 	// Create gRPC connection to peer
 // 	conn, err := grpc.NewClient(peerEndpoint, grpc.WithTransportCredentials(insecure.NewCredentials()))
 // 	if err != nil {
@@ -305,7 +299,7 @@ func (s *OrdererServer) CreateChannel(ctx context.Context, req *pb.ChannelReques
 // 	defer conn.Close()
 
 // 	// Create peer service client
-// 	client := pb.NewPeerServiceClient(conn)
+// 	client := pb_orderer.NewPeerServiceClient(conn)
 
 // 	// Set timeout for the broadcast
 // 	broadcastCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
@@ -317,7 +311,7 @@ func (s *OrdererServer) CreateChannel(ctx context.Context, req *pb.ChannelReques
 // 		return errors.Wrap(err, "failed to send block to peer")
 // 	}
 
-// 	if resp.Status != pb.StatusCode_OK {
+// 	if resp.Status != pb_orderer.StatusCode_OK {
 // 		return errors.Errorf("peer rejected block: %s", resp.Message)
 // 	}
 
@@ -333,17 +327,17 @@ func (s *OrdererServer) CreateChannel(ctx context.Context, req *pb.ChannelReques
 // 	logger.Infof("Orderer server listening on %s", address)
 
 // 	s.server = grpc.NewServer()
-// 	pb.RegisterOrdererServiceServer(s.server, s)
+// 	pb_orderer.RegisterOrdererServiceServer(s.server, s)
 
 // 	logger.Info("Orderer server started successfully")
 // 	return s.server.Serve(lis)
 // }
 
 // // GetChannelInfo returns information about a channel
-// func (s *OrdererServer) GetChannelInfo(ctx context.Context, req *pb.ChannelInfoRequest) (*pb.ChannelInfoResponse, error) {
+// func (s *OrdererServer) GetChannelInfo(ctx context.Context, req *pb_orderer.ChannelInfoRequest) (*pb_orderer.ChannelInfoResponse, error) {
 // 	if req.ChannelId == "" {
-// 		return &pb.ChannelInfoResponse{
-// 			Status:  pb.StatusCode_INVALID_ARGUMENT,
+// 		return &pb_orderer.ChannelInfoResponse{
+// 			Status:  pb_orderer.StatusCode_INVALID_ARGUMENT,
 // 			Message: "Channel ID cannot be empty",
 // 		}, nil
 // 	}
@@ -353,8 +347,8 @@ func (s *OrdererServer) CreateChannel(ctx context.Context, req *pb.ChannelReques
 // 	s.mutex.RUnlock()
 
 // 	if !exists {
-// 		return &pb.ChannelInfoResponse{
-// 			Status:  pb.StatusCode_CHANNEL_NOT_FOUND,
+// 		return &pb_orderer.ChannelInfoResponse{
+// 			Status:  pb_orderer.StatusCode_CHANNEL_NOT_FOUND,
 // 			Message: fmt.Sprintf("Channel %s not found", req.ChannelId),
 // 		}, nil
 // 	}
@@ -373,7 +367,7 @@ func (s *OrdererServer) CreateChannel(ctx context.Context, req *pb.ChannelReques
 // 		previousBlockHash = s.orderer.calculateBlockHash(prevBlock)
 // 	}
 
-// 	info := &pb.ChannelInfo{
+// 	info := &pb_orderer.ChannelInfo{
 // 		ChannelId:         req.ChannelId,
 // 		Height:            uint64(len(channel.Blocks)),
 // 		CurrentBlockHash:  currentBlockHash,
@@ -381,15 +375,15 @@ func (s *OrdererServer) CreateChannel(ctx context.Context, req *pb.ChannelReques
 // 		PeerEndpoints:     []string{"localhost:7051"}, // Default peer endpoints
 // 	}
 
-// 	return &pb.ChannelInfoResponse{
-// 		Status:  pb.StatusCode_OK,
+// 	return &pb_orderer.ChannelInfoResponse{
+// 		Status:  pb_orderer.StatusCode_OK,
 // 		Message: fmt.Sprintf("Channel %s info retrieved", req.ChannelId),
 // 		Info:    info,
 // 	}, nil
 // }
 
 // // StreamBlocks streams blocks to clients
-// func (s *OrdererServer) StreamBlocks(req *pb.BlockStreamRequest, stream pb.OrdererService_StreamBlocksServer) error {
+// func (s *OrdererServer) StreamBlocks(req *pb_orderer.BlockStreamRequest, stream pb_orderer.OrdererService_StreamBlocksServer) error {
 // 	logger.Infof("[Orderer] Starting block stream for channel %s from block %d", req.ChannelId, req.StartBlock)
 
 // 	if req.ChannelId == "" {
@@ -411,16 +405,16 @@ func (s *OrdererServer) CreateChannel(ctx context.Context, req *pb.ChannelReques
 
 // 	for i, block := range blocks {
 // 		if uint64(i) >= req.StartBlock {
-// 			pbBlock := &pb.Block{
+// 			pb_ordererBlock := &pb_orderer.Block{
 // 				Number:       block.Number,
 // 				PreviousHash: block.PreviousHash,
 // 				DataHash:     block.Data,
 // 				Timestamp:    block.Timestamp.Unix(),
 // 				ChannelId:    req.ChannelId,
-// 				Transactions: []*pb.Transaction{}, // Would be populated from actual transactions
+// 				Transactions: []*pb_orderer.Transaction{}, // Would be populated from actual transactions
 // 			}
 
-// 			if err := stream.Send(pbBlock); err != nil {
+// 			if err := stream.Send(pb_ordererBlock); err != nil {
 // 				logger.Errorf("Failed to send block %d: %v", block.Number, err)
 // 				return err
 // 			}
@@ -434,10 +428,10 @@ func (s *OrdererServer) CreateChannel(ctx context.Context, req *pb.ChannelReques
 // }
 
 // // GetBlockRange returns a range of blocks
-// func (s *OrdererServer) GetBlockRange(ctx context.Context, req *pb.BlockRangeRequest) (*pb.BlockRangeResponse, error) {
+// func (s *OrdererServer) GetBlockRange(ctx context.Context, req *pb_orderer.BlockRangeRequest) (*pb_orderer.BlockRangeResponse, error) {
 // 	if req.ChannelId == "" {
-// 		return &pb.BlockRangeResponse{
-// 			Status:  pb.StatusCode_INVALID_ARGUMENT,
+// 		return &pb_orderer.BlockRangeResponse{
+// 			Status:  pb_orderer.StatusCode_INVALID_ARGUMENT,
 // 			Message: "Channel ID cannot be empty",
 // 		}, nil
 // 	}
@@ -447,13 +441,13 @@ func (s *OrdererServer) CreateChannel(ctx context.Context, req *pb.ChannelReques
 // 	s.mutex.RUnlock()
 
 // 	if !exists {
-// 		return &pb.BlockRangeResponse{
-// 			Status:  pb.StatusCode_CHANNEL_NOT_FOUND,
+// 		return &pb_orderer.BlockRangeResponse{
+// 			Status:  pb_orderer.StatusCode_CHANNEL_NOT_FOUND,
 // 			Message: fmt.Sprintf("Channel %s not found", req.ChannelId),
 // 		}, nil
 // 	}
 
-// 	var blocks []*pb.Block
+// 	var blocks []*pb_orderer.Block
 // 	s.mutex.RLock()
 // 	channelBlocks := channel.Blocks
 // 	s.mutex.RUnlock()
@@ -473,15 +467,15 @@ func (s *OrdererServer) CreateChannel(ctx context.Context, req *pb.ChannelReques
 // 	for i := req.StartBlock; i < endBlock && count < maxBlocks; i++ {
 // 		if int(i) < len(channelBlocks) {
 // 			block := channelBlocks[i]
-// 			pbBlock := &pb.Block{
+// 			pb_ordererBlock := &pb_orderer.Block{
 // 				Number:       block.Number,
 // 				PreviousHash: block.PreviousHash,
 // 				DataHash:     block.Data,
 // 				Timestamp:    block.Timestamp.Unix(),
 // 				ChannelId:    req.ChannelId,
-// 				Transactions: []*pb.Transaction{}, // Would be populated from actual transactions
+// 				Transactions: []*pb_orderer.Transaction{}, // Would be populated from actual transactions
 // 			}
-// 			blocks = append(blocks, pbBlock)
+// 			blocks = append(blocks, pb_ordererBlock)
 // 			count++
 // 		}
 // 	}
@@ -489,8 +483,8 @@ func (s *OrdererServer) CreateChannel(ctx context.Context, req *pb.ChannelReques
 // 	hasMore := endBlock < uint64(len(channelBlocks))
 // 	nextBlock := endBlock
 
-// 	return &pb.BlockRangeResponse{
-// 		Status:    pb.StatusCode_OK,
+// 	return &pb_orderer.BlockRangeResponse{
+// 		Status:    pb_orderer.StatusCode_OK,
 // 		Message:   fmt.Sprintf("Retrieved %d blocks", len(blocks)),
 // 		Blocks:    blocks,
 // 		HasMore:   hasMore,
@@ -499,48 +493,48 @@ func (s *OrdererServer) CreateChannel(ctx context.Context, req *pb.ChannelReques
 // }
 
 // GetOrdererStatus returns orderer status information
-func (s *OrdererServer) GetOrdererStatus(ctx context.Context, req *pb.OrdererStatusRequest) (*pb.OrdererStatusResponse, error) {
-	s.mutex.RLock()
-	channelCount := len(s.orderer.channels)
-	blockCount := s.orderer.GetBlockCount()
-	s.mutex.RUnlock()
+// func (s *OrdererServer) GetOrdererStatus(ctx context.Context, req *pb_orderer.OrdererStatusRequest) (*pb_orderer.OrdererStatusResponse, error) {
+// 	s.mutex.RLock()
+// 	channelCount := len(s.orderer.channels)
+// 	blockCount := s.orderer.GetBlockCount()
+// 	s.mutex.RUnlock()
 
-	var channels []string
-	if req.IncludeChannels {
-		channels = s.orderer.GetChannels()
-	}
+// 	var channels []string
+// 	if req.IncludeChannels {
+// 		channels = s.orderer.GetChannels()
+// 	}
 
-	status := &pb.OrdererStatus{
-		OrdererId: s.orderer.GetMSPID(),
-		Endpoint:  "localhost:7050", // Would be configurable
-		IsLeader:  true,             // Single orderer setup
-		Channels:  channels,
-		Metrics: &pb.OrdererMetrics{
-			TotalBlocks:    blockCount,
-			ActiveChannels: int32(channelCount),
-			ConnectedPeers: 1, // Placeholder
-		},
-		UptimeSeconds: 3600, // Placeholder
-		Version:       "1.0.0",
-	}
+// 	status := &pb_orderer.OrdererStatus{
+// 		OrdererId: s.orderer.GetMSPID(),
+// 		Endpoint:  "localhost:7050", // Would be configurable
+// 		IsLeader:  true,             // Single orderer setup
+// 		Channels:  channels,
+// 		Metrics: &pb_orderer.OrdererMetrics{
+// 			TotalBlocks:    blockCount,
+// 			ActiveChannels: int32(channelCount),
+// 			ConnectedPeers: 1, // Placeholder
+// 		},
+// 		UptimeSeconds: 3600, // Placeholder
+// 		Version:       "1.0.0",
+// 	}
 
-	return &pb.OrdererStatusResponse{
-		Status:        pb.StatusCode_OK,
-		Message:       "Orderer status retrieved successfully",
-		OrdererStatus: status,
-	}, nil
-}
+// 	return &pb_orderer.OrdererStatusResponse{
+// 		Status:        pb_orderer.StatusCode_OK,
+// 		Message:       "Orderer status retrieved successfully",
+// 		OrdererStatus: status,
+// 	}, nil
+// }
 
-// UpdateChannelConfig updates channel configuration
-func (s *OrdererServer) UpdateChannelConfig(ctx context.Context, req *pb.ChannelConfigUpdateRequest) (*pb.ChannelConfigUpdateResponse, error) {
-	// For now, return not implemented
-	return &pb.ChannelConfigUpdateResponse{
-		Status:  pb.StatusCode_SERVICE_UNAVAILABLE,
-		Message: "Channel config update not yet implemented",
-	}, nil
-}
+// // UpdateChannelConfig updates channel configuration
+// func (s *OrdererServer) UpdateChannelConfig(ctx context.Context, req *pb_orderer.ChannelConfigUpdateRequest) (*pb_orderer.ChannelConfigUpdateResponse, error) {
+// 	// For now, return not implemented
+// 	return &pb_orderer.ChannelConfigUpdateResponse{
+// 		Status:  pb_orderer.StatusCode_SERVICE_UNAVAILABLE,
+// 		Message: "Channel config update not yet implemented",
+// 	}, nil
+// }
 
-// StartWithContext starts the server with context support for graceful shutdown
+// // StartWithContext starts the server with context support for graceful shutdown
 func (s *OrdererServer) StartWithContext(ctx context.Context, address string) error {
 	lis, err := net.Listen("tcp", address)
 	if err != nil {
@@ -550,7 +544,7 @@ func (s *OrdererServer) StartWithContext(ctx context.Context, address string) er
 	logger.Infof("Orderer server listening on %s", address)
 
 	s.server = grpc.NewServer()
-	pb.RegisterOrdererServiceServer(s.server, s)
+	pb_orderer.RegisterOrdererServiceServer(s.server, s)
 
 	// Start server in goroutine
 	go func() {

@@ -3,6 +3,7 @@ module github.com/ddr4869/minifab
 go 1.23.2
 
 require (
+	github.com/golang/protobuf v1.5.4
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.9.1
 	go.uber.org/zap v1.27.0

@@ -6,8 +6,9 @@ import (
 	"time"
 
 	"github.com/ddr4869/minifab/common/logger"
-	"github.com/ddr4869/minifab/common/proto"
 	"github.com/ddr4869/minifab/peer/core"
+	pb_common "github.com/ddr4869/minifab/proto/common"
+	pb_orderer "github.com/ddr4869/minifab/proto/orderer"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
@@ -56,9 +57,9 @@ func CreateChannel(peer *core.Peer, channelName, profileName string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	req := &proto.ChannelRequest{
+	req := &pb_orderer.ChannelRequest{
 		ChannelName:  channelName,
-		ProfileName:  profileName,
+		Profile:      profileName,
 		ConfigtxPath: "config/configtx.yaml",
 	}
 
@@ -69,7 +70,7 @@ func CreateChannel(peer *core.Peer, channelName, profileName string) error {
 		return errors.Wrapf(err, "failed to create channel %s via orderer with profile %s", channelName, profileName)
 	}
 
-	if resp.Status != proto.StatusCode_OK {
+	if resp.Status != pb_common.StatusCode_OK {
 		return errors.Errorf("channel creation failed: %s", resp.Message)
 	}
 

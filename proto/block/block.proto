@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package orderer;
+
+option go_package = "./proto";
+
+// 블록 타입 구분
+enum BlockType {
+    BLOCK_TYPE_UNSPECIFIED = 0;
+    BLOCK_TYPE_CONFIG = 1;    // 설정 블록
+    BLOCK_TYPE_DATA = 2;      // 일반 트랜잭션 블록
+}
+
+// Block Header - 블록 헤더 (3가지 필드)
+message BlockHeader {
+    uint64 number = 1;                    // Block Number (0부터 시작)
+    bytes current_block_hash = 2;         // 현재 Block Hash
+    bytes previous_hash = 3;              // 이전 Block Header Hash
+    BlockType header_type = 4;            // 블록 타입 구분
+}
+
+// Block Data - Ordering service에 의해 정렬된 트랜잭션들
+message BlockData {
+    repeated bytes transactions = 1;      // 트랜잭션 데이터 목록
+}
+
+// Block Metadata - 블록 검증을 위한 메타데이터
+message BlockMetadata {
+    bytes creator_certificate = 1;        // 블록 생성자 인증서
+    bytes creator_signature = 2;          // 블록 생성자 서명
+    bytes validation_bitmap = 3;          // 트랜잭션 Valid/Invalid 비트맵
+    bytes accumulated_hash = 4;           // fork 확인을 위한 축적된 해시값
+}
+
+// Block - 완전한 블록 구조
+message Block {
+    BlockHeader header = 1;               // Block Header
+    BlockData data = 2;                   // Block Data
+    BlockMetadata metadata = 3;           // Block Metadata
+}
+
+// Genesis Block - 제네시스 블록
+message GenesisBlock {
+    Block block = 1;                      // 블록
+    string channel_id = 2;                // 채널 ID
+    string stored_at = 3;                 // 저장 시간
+    bool is_committed = 4;                // 커밋 여부
+    string block_hash = 5;                // 블록 해시
+} 

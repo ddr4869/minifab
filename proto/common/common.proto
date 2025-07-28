@@ -1,0 +1,115 @@
+syntax = "proto3";
+
+package common;
+
+option go_package = "github.com/ddr4869/minifab/proto/common";
+
+import "google/protobuf/timestamp.proto";
+
+// 상태 코드
+enum StatusCode {
+    OK = 0;
+    INVALID_ARGUMENT = 1;
+    NOT_FOUND = 2;
+    ALREADY_EXISTS = 3;
+    PERMISSION_DENIED = 4;
+    INTERNAL_ERROR = 5;
+    UNAVAILABLE = 6;
+    TIMEOUT = 7;
+    INVALID_SIGNATURE = 8;
+    INVALID_CERTIFICATE = 9;
+    CHANNEL_NOT_FOUND = 10;
+    TRANSACTION_VALIDATION_FAILED = 11;
+    ENDORSEMENT_POLICY_FAILURE = 12;
+    NETWORK_ERROR = 13;
+    CONSENSUS_ERROR = 14;
+    LEDGER_ERROR = 15;
+    MSP_ERROR = 16;
+    BLOCK_VALIDATION_FAILED = 17;
+    INVALID_BLOCK = 18;
+    INVALID_TRANSACTION_FORMAT = 19;
+}
+
+// 메시지 타입
+enum MessageType {
+    MESSAGE_TYPE_UNSPECIFIED = 0;
+    MESSAGE_TYPE_BLOCK = 1;           // 블록 전송
+    MESSAGE_TYPE_TRANSACTION = 2;     // 트랜잭션 전송
+    MESSAGE_TYPE_CONFIG = 3;          // 설정 전송
+}
+
+// 블록 타입 구분
+enum BlockType {
+    BLOCK_TYPE_UNSPECIFIED = 0;
+    BLOCK_TYPE_CONFIG = 1;    // 설정 블록
+    BLOCK_TYPE_DATA = 2;      // 일반 트랜잭션 블록
+}
+
+// Envelope - 노드 간 통신용 봉투
+message Envelope {
+    bytes payload = 1;        // 직렬화된 Payload
+    bytes signature = 2;      // 서명
+}
+
+// Payload - 실제 데이터를 담는 구조
+message Payload {
+    Header header = 1;        // 메시지 헤더
+    bytes data = 2;           // 직렬화된 데이터 (Block, Transaction 등)
+}
+
+// Header - 메시지 헤더
+message Header {
+    bytes creator = 1;        // 생성자 인증서
+    bytes nonce = 2;          // 중복 방지용 nonce
+    MessageType type = 3;     // 메시지 타입
+    string channel_id = 4;    // 채널 ID
+    google.protobuf.Timestamp timestamp = 5; // 타임스탬프
+}
+
+// Block Header - 블록 헤더
+message BlockHeader {
+    uint64 number = 1;                    // Block Number (0부터 시작)
+    bytes current_block_hash = 2;         // 현재 Block Hash
+    bytes previous_hash = 3;              // 이전 Block Header Hash
+    BlockType header_type = 4;            // 블록 타입 구분
+}
+
+// Block Data - Ordering service에 의해 정렬된 트랜잭션들
+message BlockData {
+    repeated bytes transactions = 1;      // 트랜잭션 데이터 목록
+}
+
+// Block Metadata - 블록 검증을 위한 메타데이터
+message BlockMetadata {
+    bytes creator_certificate = 1;        // 블록 생성자 인증서
+    bytes creator_signature = 2;          // 블록 생성자 서명
+    bytes validation_bitmap = 3;          // 트랜잭션 Valid/Invalid 비트맵
+    bytes accumulated_hash = 4;           // fork 확인을 위한 축적된 해시값
+}
+
+// Block - 완전한 블록 구조
+message Block {
+    BlockHeader header = 1;               // Block Header
+    BlockData data = 2;                   // Block Data
+    BlockMetadata metadata = 3;           // Block Metadata
+}
+
+// Genesis Block - 제네시스 블록
+message GenesisBlock {
+    Block block = 1;                      // 블록
+    string channel_id = 2;                // 채널 ID
+    string stored_at = 3;                 // 저장 시간
+    bool is_committed = 4;                // 커밋 여부
+    string block_hash = 5;                // 블록 해시
+}
+
+// Transaction - 트랜잭션 구조
+message Transaction {
+    string id = 1;                        // 트랜잭션 ID
+    bytes payload = 2;                    // 트랜잭션 데이터
+    BlockType type = 3;                   // 트랜잭션 타입
+    bytes identity = 4;                   // 생성자 인증서
+    bytes signature = 5;                  // 서명
+    string creator_msp_id = 6;            // 생성자 MSP ID
+    int64 timestamp = 7;                  // 트랜잭션 생성 시간
+} 
