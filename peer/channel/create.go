@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/ddr4869/minifab/common/logger"
+	"github.com/ddr4869/minifab/common/proto"
 	"github.com/ddr4869/minifab/peer/core"
-	"github.com/ddr4869/minifab/proto"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )

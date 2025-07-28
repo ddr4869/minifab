@@ -13,7 +13,6 @@ import (
 	"github.com/ddr4869/minifab/common/logger"
 	"github.com/ddr4869/minifab/common/msp"
 	"github.com/pkg/errors"
-	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -227,7 +226,6 @@ func (o *Orderer) BootstrapNetwork(genesisConfig *configtx.SystemChannelInfo) er
 	return nil
 }
 
-// validateBootstrapPreconditions 부트스트랩 전제조건 검증
 func (o *Orderer) validateBootstrapPreconditions(genesisConfig *configtx.SystemChannelInfo) error {
 	if o.isBootstrapped {
 		return errors.New("network is already bootstrapped")
@@ -240,7 +238,6 @@ func (o *Orderer) validateBootstrapPreconditions(genesisConfig *configtx.SystemC
 	return nil
 }
 
-// generateGenesisBlock 제네시스 블록 생성
 func (o *Orderer) generateGenesisBlock(genesisConfig *configtx.SystemChannelInfo) error {
 	// convert configtx to JSON file
 	jsonData, err := json.Marshal(genesisConfig)
@@ -252,38 +249,4 @@ func (o *Orderer) generateGenesisBlock(genesisConfig *configtx.SystemChannelInfo
 	os.WriteFile("genesis.json", jsonData, 0644)
 
 	return nil
-}
-
-// CreateGenesisConfigFromConfigTx configtx.yaml 파일에서 ConfigTx 생성
-func CreateGenesisConfigFromConfigTx(configTxPath string, profile string) (*configtx.SystemChannelInfo, error) {
-	if configTxPath == "" {
-		return nil, errors.Errorf("configtx path cannot be empty")
-	}
-
-	// configtx.yaml 파일 존재 확인
-	if _, err := os.Stat(configTxPath); os.IsNotExist(err) {
-		return nil, errors.Errorf("configtx file does not exist: %s", configTxPath)
-	}
-
-	// configtx.yaml 파일 읽기
-	data, err := os.ReadFile(configTxPath)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to read configtx file")
-	}
-
-	// YAML 파싱
-	var configTx configtx.ConfigTx
-	if err := yaml.Unmarshal(data, &configTx); err != nil {
-		return nil, errors.Wrap(err, "failed to parse configtx YAML")
-	}
-
-	// ConfigTxYAML을 ConfigTx로 변환
-	genesisConfig, err := configTx.GetSystemChannelInfo(profile)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to convert configtx to genesis config")
-	}
-
-	logger.Infof("Successfully loaded configuration from %s with profile %s", configTxPath, profile)
-
-	return genesisConfig, nil
 }

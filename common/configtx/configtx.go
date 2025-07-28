@@ -73,7 +73,6 @@ func (c *ConfigTx) GetSystemChannelInfo(name string) (*SystemChannelInfo, error)
 		return nil, fmt.Errorf("profile '%s' not found", name)
 	}
 
-	// YAML 노드로 다시 마샬링하여 구조체로 변환
 	yamlData, err := yaml.Marshal(profileData)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal profile data: %v", err)
@@ -92,7 +91,6 @@ func (c *ConfigTx) GetAppChannelProfile(name string) (*AppChannelProfile, error)
 		return nil, fmt.Errorf("profile '%s' not found", name)
 	}
 
-	// YAML 노드로 다시 마샬링하여 구조체로 변환
 	yamlData, err := yaml.Marshal(profileData)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal profile data: %v", err)

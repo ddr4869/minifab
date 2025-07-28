@@ -22,7 +22,6 @@ func init() {
 		panic("Failed to initialize logger: " + err.Error())
 	}
 
-	// 서브커맨드 추가
 	rootCmd.AddCommand(channel.Cmd())
 
 }

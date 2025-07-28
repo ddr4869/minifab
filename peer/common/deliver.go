@@ -2,7 +2,7 @@ package common
 
 import (
 	"github.com/ddr4869/minifab/common/logger"
-	"github.com/ddr4869/minifab/proto"
+	"github.com/ddr4869/minifab/common/proto"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"

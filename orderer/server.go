@@ -10,7 +10,7 @@ import (
 	"sync"
 
 	"github.com/ddr4869/minifab/common/logger"
-	pb "github.com/ddr4869/minifab/proto"
+	pb "github.com/ddr4869/minifab/common/proto"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 )
