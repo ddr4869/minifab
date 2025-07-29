@@ -29,7 +29,7 @@ Profiles:
       Organization: *OrdererOrg 
     Consortiums: 
       - *Org1
-  AppChannel:
+  testchannel0:
     Application:
       << : *ChannelConfig
       Organizations:

@@ -229,7 +229,7 @@ func (BlockType) EnumDescriptor() ([]byte, []int) {
 // Envelope - 노드 간 통신용 봉투
 type Envelope struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Payload       []byte                 `protobuf:"bytes,1,opt,name=payload,proto3" json:"payload,omitempty"`     // 직렬화된 Payload
+	Payload       *Payload               `protobuf:"bytes,1,opt,name=payload,proto3" json:"payload,omitempty"`     // 직렬화된 Payload
 	Signature     []byte                 `protobuf:"bytes,2,opt,name=signature,proto3" json:"signature,omitempty"` // 서명
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -265,7 +265,7 @@ func (*Envelope) Descriptor() ([]byte, []int) {
 	return file_proto_common_common_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *Envelope) GetPayload() []byte {
+func (x *Envelope) GetPayload() *Payload {
 	if x != nil {
 		return x.Payload
 	}
@@ -827,9 +827,9 @@ var File_proto_common_common_proto protoreflect.FileDescriptor
 
 const file_proto_common_common_proto_rawDesc = "" +
 	"\n" +
-	"\x19proto/common/common.proto\x12\x06common\x1a\x1fgoogle/protobuf/timestamp.proto\"B\n" +
-	"\bEnvelope\x12\x18\n" +
-	"\apayload\x18\x01 \x01(\fR\apayload\x12\x1c\n" +
+	"\x19proto/common/common.proto\x12\x06common\x1a\x1fgoogle/protobuf/timestamp.proto\"S\n" +
+	"\bEnvelope\x12)\n" +
+	"\apayload\x18\x01 \x01(\v2\x0f.common.PayloadR\apayload\x12\x1c\n" +
 	"\tsignature\x18\x02 \x01(\fR\tsignature\"E\n" +
 	"\aPayload\x12&\n" +
 	"\x06header\x18\x01 \x01(\v2\x0e.common.HeaderR\x06header\x12\x12\n" +
@@ -937,20 +937,21 @@ var file_proto_common_common_proto_goTypes = []any{
 	(*timestamppb.Timestamp)(nil), // 12: google.protobuf.Timestamp
 }
 var file_proto_common_common_proto_depIdxs = []int32{
-	5,  // 0: common.Payload.header:type_name -> common.Header
-	1,  // 1: common.Header.type:type_name -> common.MessageType
-	12, // 2: common.Header.timestamp:type_name -> google.protobuf.Timestamp
-	2,  // 3: common.BlockHeader.header_type:type_name -> common.BlockType
-	6,  // 4: common.Block.header:type_name -> common.BlockHeader
-	7,  // 5: common.Block.data:type_name -> common.BlockData
-	8,  // 6: common.Block.metadata:type_name -> common.BlockMetadata
-	9,  // 7: common.GenesisBlock.block:type_name -> common.Block
-	2,  // 8: common.Transaction.type:type_name -> common.BlockType
-	9,  // [9:9] is the sub-list for method output_type
-	9,  // [9:9] is the sub-list for method input_type
-	9,  // [9:9] is the sub-list for extension type_name
-	9,  // [9:9] is the sub-list for extension extendee
-	0,  // [0:9] is the sub-list for field type_name
+	4,  // 0: common.Envelope.payload:type_name -> common.Payload
+	5,  // 1: common.Payload.header:type_name -> common.Header
+	1,  // 2: common.Header.type:type_name -> common.MessageType
+	12, // 3: common.Header.timestamp:type_name -> google.protobuf.Timestamp
+	2,  // 4: common.BlockHeader.header_type:type_name -> common.BlockType
+	6,  // 5: common.Block.header:type_name -> common.BlockHeader
+	7,  // 6: common.Block.data:type_name -> common.BlockData
+	8,  // 7: common.Block.metadata:type_name -> common.BlockMetadata
+	9,  // 8: common.GenesisBlock.block:type_name -> common.Block
+	2,  // 9: common.Transaction.type:type_name -> common.BlockType
+	10, // [10:10] is the sub-list for method output_type
+	10, // [10:10] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_proto_common_common_proto_init() }

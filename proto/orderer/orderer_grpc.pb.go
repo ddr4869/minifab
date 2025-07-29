@@ -20,30 +20,14 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	OrdererService_BootstrapNetwork_FullMethodName = "/orderer.OrdererService/BootstrapNetwork"
-	OrdererService_SubmitBlock_FullMethodName      = "/orderer.OrdererService/SubmitBlock"
-	OrdererService_GetBlock_FullMethodName         = "/orderer.OrdererService/GetBlock"
-	OrdererService_CreateChannel_FullMethodName    = "/orderer.OrdererService/CreateChannel"
-	OrdererService_GetChannelInfo_FullMethodName   = "/orderer.OrdererService/GetChannelInfo"
-	OrdererService_GetOrdererStatus_FullMethodName = "/orderer.OrdererService/GetOrdererStatus"
+	OrdererService_CreateChannel_FullMethodName = "/orderer.OrdererService/CreateChannel"
 )
 
 // OrdererServiceClient is the client API for OrdererService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-//
-// OrdererService - Orderer 노드 서비스
 type OrdererServiceClient interface {
-	// 제네시스 블록 생성 및 부트스트랩
-	BootstrapNetwork(ctx context.Context, in *BootstrapRequest, opts ...grpc.CallOption) (*BootstrapResponse, error)
-	// 블록 관련
-	SubmitBlock(ctx context.Context, in *common.Envelope, opts ...grpc.CallOption) (*BlockResponse, error)
-	GetBlock(ctx context.Context, in *BlockRequest, opts ...grpc.CallOption) (*common.Block, error)
-	// 채널 관련
-	CreateChannel(ctx context.Context, in *ChannelRequest, opts ...grpc.CallOption) (*ChannelResponse, error)
-	GetChannelInfo(ctx context.Context, in *ChannelInfoRequest, opts ...grpc.CallOption) (*ChannelInfoResponse, error)
-	// 상태 확인
-	GetOrdererStatus(ctx context.Context, in *OrdererStatusRequest, opts ...grpc.CallOption) (*OrdererStatusResponse, error)
+	CreateChannel(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[common.Envelope, common.Block], error)
 }
 
 type ordererServiceClient struct {
@@ -54,82 +38,24 @@ func NewOrdererServiceClient(cc grpc.ClientConnInterface) OrdererServiceClient {
 	return &ordererServiceClient{cc}
 }
 
-func (c *ordererServiceClient) BootstrapNetwork(ctx context.Context, in *BootstrapRequest, opts ...grpc.CallOption) (*BootstrapResponse, error) {
+func (c *ordererServiceClient) CreateChannel(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[common.Envelope, common.Block], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(BootstrapResponse)
-	err := c.cc.Invoke(ctx, OrdererService_BootstrapNetwork_FullMethodName, in, out, cOpts...)
+	stream, err := c.cc.NewStream(ctx, &OrdererService_ServiceDesc.Streams[0], OrdererService_CreateChannel_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
-	return out, nil
+	x := &grpc.GenericClientStream[common.Envelope, common.Block]{ClientStream: stream}
+	return x, nil
 }
 
-func (c *ordererServiceClient) SubmitBlock(ctx context.Context, in *common.Envelope, opts ...grpc.CallOption) (*BlockResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(BlockResponse)
-	err := c.cc.Invoke(ctx, OrdererService_SubmitBlock_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *ordererServiceClient) GetBlock(ctx context.Context, in *BlockRequest, opts ...grpc.CallOption) (*common.Block, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(common.Block)
-	err := c.cc.Invoke(ctx, OrdererService_GetBlock_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *ordererServiceClient) CreateChannel(ctx context.Context, in *ChannelRequest, opts ...grpc.CallOption) (*ChannelResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ChannelResponse)
-	err := c.cc.Invoke(ctx, OrdererService_CreateChannel_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *ordererServiceClient) GetChannelInfo(ctx context.Context, in *ChannelInfoRequest, opts ...grpc.CallOption) (*ChannelInfoResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ChannelInfoResponse)
-	err := c.cc.Invoke(ctx, OrdererService_GetChannelInfo_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *ordererServiceClient) GetOrdererStatus(ctx context.Context, in *OrdererStatusRequest, opts ...grpc.CallOption) (*OrdererStatusResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(OrdererStatusResponse)
-	err := c.cc.Invoke(ctx, OrdererService_GetOrdererStatus_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type OrdererService_CreateChannelClient = grpc.BidiStreamingClient[common.Envelope, common.Block]
 
 // OrdererServiceServer is the server API for OrdererService service.
 // All implementations must embed UnimplementedOrdererServiceServer
 // for forward compatibility.
-//
-// OrdererService - Orderer 노드 서비스
 type OrdererServiceServer interface {
-	// 제네시스 블록 생성 및 부트스트랩
-	BootstrapNetwork(context.Context, *BootstrapRequest) (*BootstrapResponse, error)
-	// 블록 관련
-	SubmitBlock(context.Context, *common.Envelope) (*BlockResponse, error)
-	GetBlock(context.Context, *BlockRequest) (*common.Block, error)
-	// 채널 관련
-	CreateChannel(context.Context, *ChannelRequest) (*ChannelResponse, error)
-	GetChannelInfo(context.Context, *ChannelInfoRequest) (*ChannelInfoResponse, error)
-	// 상태 확인
-	GetOrdererStatus(context.Context, *OrdererStatusRequest) (*OrdererStatusResponse, error)
+	CreateChannel(grpc.BidiStreamingServer[common.Envelope, common.Block]) error
 	mustEmbedUnimplementedOrdererServiceServer()
 }
 
@@ -140,23 +66,8 @@ type OrdererServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedOrdererServiceServer struct{}
 
-func (UnimplementedOrdererServiceServer) BootstrapNetwork(context.Context, *BootstrapRequest) (*BootstrapResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method BootstrapNetwork not implemented")
-}
-func (UnimplementedOrdererServiceServer) SubmitBlock(context.Context, *common.Envelope) (*BlockResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SubmitBlock not implemented")
-}
-func (UnimplementedOrdererServiceServer) GetBlock(context.Context, *BlockRequest) (*common.Block, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetBlock not implemented")
-}
-func (UnimplementedOrdererServiceServer) CreateChannel(context.Context, *ChannelRequest) (*ChannelResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method CreateChannel not implemented")
-}
-func (UnimplementedOrdererServiceServer) GetChannelInfo(context.Context, *ChannelInfoRequest) (*ChannelInfoResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetChannelInfo not implemented")
-}
-func (UnimplementedOrdererServiceServer) GetOrdererStatus(context.Context, *OrdererStatusRequest) (*OrdererStatusResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetOrdererStatus not implemented")
+func (UnimplementedOrdererServiceServer) CreateChannel(grpc.BidiStreamingServer[common.Envelope, common.Block]) error {
+	return status.Errorf(codes.Unimplemented, "method CreateChannel not implemented")
 }
 func (UnimplementedOrdererServiceServer) mustEmbedUnimplementedOrdererServiceServer() {}
 func (UnimplementedOrdererServiceServer) testEmbeddedByValue()                        {}
@@ -179,113 +90,12 @@ func RegisterOrdererServiceServer(s grpc.ServiceRegistrar, srv OrdererServiceSer
 	s.RegisterService(&OrdererService_ServiceDesc, srv)
 }
 
-func _OrdererService_BootstrapNetwork_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(BootstrapRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(OrdererServiceServer).BootstrapNetwork(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: OrdererService_BootstrapNetwork_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OrdererServiceServer).BootstrapNetwork(ctx, req.(*BootstrapRequest))
-	}
-	return interceptor(ctx, in, info, handler)
+func _OrdererService_CreateChannel_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(OrdererServiceServer).CreateChannel(&grpc.GenericServerStream[common.Envelope, common.Block]{ServerStream: stream})
 }
 
-func _OrdererService_SubmitBlock_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(common.Envelope)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(OrdererServiceServer).SubmitBlock(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: OrdererService_SubmitBlock_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OrdererServiceServer).SubmitBlock(ctx, req.(*common.Envelope))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _OrdererService_GetBlock_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(BlockRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(OrdererServiceServer).GetBlock(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: OrdererService_GetBlock_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OrdererServiceServer).GetBlock(ctx, req.(*BlockRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _OrdererService_CreateChannel_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ChannelRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(OrdererServiceServer).CreateChannel(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: OrdererService_CreateChannel_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OrdererServiceServer).CreateChannel(ctx, req.(*ChannelRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _OrdererService_GetChannelInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ChannelInfoRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(OrdererServiceServer).GetChannelInfo(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: OrdererService_GetChannelInfo_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OrdererServiceServer).GetChannelInfo(ctx, req.(*ChannelInfoRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _OrdererService_GetOrdererStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(OrdererStatusRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(OrdererServiceServer).GetOrdererStatus(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: OrdererService_GetOrdererStatus_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OrdererServiceServer).GetOrdererStatus(ctx, req.(*OrdererStatusRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type OrdererService_CreateChannelServer = grpc.BidiStreamingServer[common.Envelope, common.Block]
 
 // OrdererService_ServiceDesc is the grpc.ServiceDesc for OrdererService service.
 // It's only intended for direct use with grpc.RegisterService,
@@ -293,32 +103,14 @@ func _OrdererService_GetOrdererStatus_Handler(srv interface{}, ctx context.Conte
 var OrdererService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "orderer.OrdererService",
 	HandlerType: (*OrdererServiceServer)(nil),
-	Methods: []grpc.MethodDesc{
+	Methods:     []grpc.MethodDesc{},
+	Streams: []grpc.StreamDesc{
 		{
-			MethodName: "BootstrapNetwork",
-			Handler:    _OrdererService_BootstrapNetwork_Handler,
-		},
-		{
-			MethodName: "SubmitBlock",
-			Handler:    _OrdererService_SubmitBlock_Handler,
-		},
-		{
-			MethodName: "GetBlock",
-			Handler:    _OrdererService_GetBlock_Handler,
-		},
-		{
-			MethodName: "CreateChannel",
-			Handler:    _OrdererService_CreateChannel_Handler,
-		},
-		{
-			MethodName: "GetChannelInfo",
-			Handler:    _OrdererService_GetChannelInfo_Handler,
-		},
-		{
-			MethodName: "GetOrdererStatus",
-			Handler:    _OrdererService_GetOrdererStatus_Handler,
+			StreamName:    "CreateChannel",
+			Handler:       _OrdererService_CreateChannel_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
 	Metadata: "proto/orderer/orderer.proto",
 }

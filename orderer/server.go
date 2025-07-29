@@ -8,12 +8,15 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
+	"github.com/ddr4869/minifab/common/configtx"
 	"github.com/ddr4869/minifab/common/logger"
 	pb_common "github.com/ddr4869/minifab/proto/common"
 	pb_orderer "github.com/ddr4869/minifab/proto/orderer"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
+	"gopkg.in/yaml.v3"
 )
 
 type OrdererServer struct {
@@ -66,56 +69,57 @@ func NewOrdererServer(orderer *Orderer) *OrdererServer {
 // 	return pb_ordererBlock, nil
 // }
 
-func (s *OrdererServer) CreateChannel(ctx context.Context, req *pb_orderer.ChannelRequest) (*pb_orderer.ChannelResponse, error) {
+func (s *OrdererServer) CreateChannel(stream pb_orderer.OrdererService_CreateChannelServer) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	logger.Infof("[Orderer] Creating channel: %s with profile: %s", req.ChannelName, req.Profile)
+	for {
+		msg, err := stream.Recv()
+		if err != nil {
+			return err
+		}
+		logger.Infof("[Orderer] Received message: %s", msg.Payload.Data)
 
-	// configtx.yaml 경로 설정 (기본값 사용)
-	configTxPath := req.ConfigtxPath
-	if configTxPath == "" {
-		configTxPath = "config/configtx.yaml"
+		var configTx configtx.ConfigTx
+		if err := yaml.Unmarshal(msg.Payload.Data, &configTx); err != nil {
+			return errors.Wrap(err, "failed to parse configtx YAML")
+		}
+
+		appConfig, err := configtx.GetAppChannelProfile(profileName)
+		if err != nil {
+			return errors.Wrap(err, "failed to convert configtx")
+		}
+		time.Sleep(3 * time.Second)
+
+		stream.Send(&pb_common.Block{
+			Header: &pb_common.BlockHeader{
+				Number: 1,
+			},
+		})
 	}
 
-	// Profile 이름 설정 (기본값 사용)
-	profileName := req.Profile
-	if profileName == "" {
-		profileName = "OrgsChannel0" // 기본 채널 프로파일
-	}
-
-	// configtx.yaml에서 채널 구성 생성
-	// channelConfig, err := s.createChannelFromProfile(configTxPath, profileName, req.ChannelName)
-	// if err != nil {
-	// 	logger.Errorf("Failed to create channel config from profile: %v", err)
-	// 	return &pb_orderer.ChannelResponse{
-	// 		Status:  pb_orderer.StatusCode_CONFIGURATION_ERROR,
-	// 		Message: fmt.Sprintf("Failed to create channel config: %v", err),
-	// 	}, nil
-	// }
-
-	// 새 채널 생성
-	// channel := &Channel{
-	// 	Name:   req.ChannelName,
-	// 	Blocks: make([]*Block, 0),
-	// 	MSP:    s.orderer.msp,
-	// }
-
-	// s.orderer.channels[req.ChannelName] = channel
-
-	// // 채널 구성을 JSON 파일로 저장
-	// if err := saveChannelConfig(req.ChannelName, channelConfig); err != nil {
-	// 	logger.Errorf("Failed to save channel config: %v", err)
-	// 	// 채널은 생성되었지만 설정 저장 실패는 경고로 처리
-	// }
-
-	// logger.Infof("Channel %s created successfully from profile %s", req.ChannelName, profileName)
-	return &pb_orderer.ChannelResponse{
-		Status:    pb_common.StatusCode_OK,
-		Message:   fmt.Sprintf("Channel %s created successfully from profile %s", req.ChannelName, profileName),
-		ChannelId: req.ChannelName,
-	}, nil
 }
+
+// configtx.yaml 경로 설정 (기본값 사용)
+
+// configtx.yaml에서 채널 구성 생성
+// channelConfig, err := s.createChannelFromProfile(configTxPath, profileName, req.ChannelName)
+// if err != nil {
+// 	logger.Errorf("Failed to create channel config from profile: %v", err)
+// 	return &pb_orderer.ChannelResponse{
+// 		Status:  pb_orderer.StatusCode_CONFIGURATION_ERROR,
+// 		Message: fmt.Sprintf("Failed to create channel config: %v", err),
+// 	}, nil
+// }
+
+// // 채널 구성을 JSON 파일로 저장
+// if err := saveChannelConfig(req.ChannelName, channelConfig); err != nil {
+// 	logger.Errorf("Failed to save channel config: %v", err)
+// 	// 채널은 생성되었지만 설정 저장 실패는 경고로 처리
+// }
+
+// logger.Infof("Channel %s created successfully from profile %s", req.ChannelName, profileName)
+//}
 
 // BroadcastBlock broadcasts a block to all peers in the network
 // func (s *OrdererServer) BroadcastBlock(ctx context.Context, req *pb_orderer.BroadcastRequest) (*pb_orderer.BroadcastResponse, error) {

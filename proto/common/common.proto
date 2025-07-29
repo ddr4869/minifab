@@ -47,7 +47,7 @@ enum BlockType {
 
 // Envelope - 노드 간 통신용 봉투
 message Envelope {
-    bytes payload = 1;        // 직렬화된 Payload
+    Payload payload = 1;        // 직렬화된 Payload
     bytes signature = 2;      // 서명
 }
 
@@ -93,6 +93,7 @@ message Block {
     BlockData data = 2;                   // Block Data
     BlockMetadata metadata = 3;           // Block Metadata
 }
+
 
 // Genesis Block - 제네시스 블록
 message GenesisBlock {

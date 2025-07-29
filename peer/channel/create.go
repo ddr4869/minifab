@@ -2,16 +2,21 @@ package channel
 
 import (
 	"context"
+	"crypto/rand"
 	"log"
+	"os"
 	"time"
 
+	"github.com/ddr4869/minifab/common/configtx"
 	"github.com/ddr4869/minifab/common/logger"
 	"github.com/ddr4869/minifab/peer/core"
 	pb_common "github.com/ddr4869/minifab/proto/common"
-	pb_orderer "github.com/ddr4869/minifab/proto/orderer"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
+
+const cfgFile = "config/configtx.yaml"
 
 // getChannelCreateCmd는 새로운 채널을 생성합니다
 func getChannelCreateCmd(peer *core.Peer) *cobra.Command {
@@ -47,33 +52,64 @@ func getChannelCreateCmd(peer *core.Peer) *cobra.Command {
 
 // CreateChannel creates a channel with specific profile via orderer and then creates it locally
 func CreateChannel(peer *core.Peer, channelName, profileName string) error {
-	logger.Infof("[Peer] Creating channel: %s with profile: %s", channelName, profileName)
-
+	// logger.Infof("[Peer] Creating channel: %s with profile: %s", channelName, profileName)
 	if peer.OrdererClient == nil {
 		return errors.New("orderer client is required for channel creation")
 	}
 
-	// 직접 gRPC 호출로 채널 생성
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	req := &pb_orderer.ChannelRequest{
-		ChannelName:  channelName,
-		Profile:      profileName,
-		ConfigtxPath: "config/configtx.yaml",
-	}
-
-	// OrdererClient에서 직접 proto 클라이언트에 접근
-	client := peer.OrdererClient.GetClient()
-	resp, err := client.CreateChannel(ctx, req)
+	appConfig, err := os.ReadFile(cfgFile)
 	if err != nil {
-		return errors.Wrapf(err, "failed to create channel %s via orderer with profile %s", channelName, profileName)
+		return errors.Wrapf(err, "failed to read configtx file")
 	}
 
-	if resp.Status != pb_common.StatusCode_OK {
-		return errors.Errorf("channel creation failed: %s", resp.Message)
+	payload := &pb_common.Payload{
+		Header: &pb_common.Header{
+			Type:      pb_common.MessageType_MESSAGE_TYPE_CONFIG,
+			ChannelId: channelName,
+			Timestamp: timestamppb.Now(),
+		},
+		Data: appConfig,
 	}
 
-	logger.Infof("[Peer] Channel %s created successfully with profile %s", channelName, profileName)
+	stream, err := peer.OrdererClient.GetClient().CreateChannel(ctx)
+	if err != nil {
+		return errors.Wrapf(err, "failed to create channel")
+	}
+
+	sig, err := peer.PeerConfig.Msp.GetSigningIdentity().Sign(rand.Reader, payload.Data, nil)
+	if err != nil {
+		return errors.Wrapf(err, "failed to sign payload")
+	}
+
+	stream.Send(&pb_common.Envelope{
+		Payload:   payload,
+		Signature: sig,
+	})
+	response, err := stream.Recv()
+	if err != nil {
+		return errors.Wrapf(err, "failed to receive response")
+	}
+	logger.Info("✅ Broadcast response: ", response)
+
 	return nil
+}
+
+func CreateAppConfigFromConfigTx(configTxPath string, profile string) (*configtx.ChannelConfig, error) {
+
+	configTx, err := configtx.ConvertConfigtx(configTxPath, profile)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to convert configtx")
+	}
+	// ConfigTxYAML을 ConfigTx로 변환
+	genesisConfig, err := configTx.GetAppChannelProfile(profile)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to convert configtx to genesis config")
+	}
+
+	logger.Infof("Successfully loaded configuration from %s with profile %s", configTxPath, profile)
+
+	return &genesisConfig.Application, nil
 }

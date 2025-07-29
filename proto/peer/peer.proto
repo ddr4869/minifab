@@ -13,10 +13,7 @@ service PeerService {
     
     // 채널 참여
     rpc JoinChannel(JoinChannelRequest) returns (JoinChannelResponse) {}
-    
-    // 상태 확인
-    rpc GetPeerInfo(PeerInfoRequest) returns (PeerInfoResponse) {}
-    rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse) {}
+
 }
 
 // ProcessBlockResponse - 블록 처리 응답
@@ -42,61 +39,4 @@ message JoinChannelResponse {
     string message = 2;
     string channel_id = 3;
     uint64 current_height = 4;
-}
-
-// PeerInfoRequest - Peer 정보 요청
-message PeerInfoRequest {
-    string peer_id = 1;
-}
-
-// PeerInfoResponse - Peer 정보 응답
-message PeerInfoResponse {
-    common.StatusCode status = 1;
-    string message = 2;
-    PeerInfo info = 3;
-}
-
-// PeerInfo - Peer 정보
-message PeerInfo {
-    string peer_id = 1;
-    string endpoint = 2;
-    repeated string channels = 3;
-    string msp_id = 4;
-    PeerStatus peer_status = 5;
-    int64 ledger_height = 6;
-}
-
-// PeerStatus - Peer 상태
-enum PeerStatus {
-    ACTIVE = 0;
-    INACTIVE = 1;
-    JOINING = 2;
-    SYNCING = 3;
-    ERROR = 4;
-}
-
-// HealthCheckRequest - 헬스 체크 요청
-message HealthCheckRequest {
-    string service_name = 1;
-}
-
-// HealthCheckResponse - 헬스 체크 응답
-message HealthCheckResponse {
-    common.StatusCode status = 1;
-    string message = 2;
-    HealthStatus health_status = 3;
-}
-
-// HealthStatus - 헬스 상태
-message HealthStatus {
-    ServiceHealth overall_health = 1;
-    int64 last_check_timestamp = 2;
-}
-
-// ServiceHealth - 서비스 헬스
-enum ServiceHealth {
-    HEALTHY = 0;
-    UNHEALTHY = 1;
-    DEGRADED = 2;
-    UNKNOWN_HEALTH = 3;
 }

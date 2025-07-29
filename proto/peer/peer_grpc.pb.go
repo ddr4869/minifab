@@ -22,8 +22,6 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	PeerService_ProcessBlock_FullMethodName = "/peer.PeerService/ProcessBlock"
 	PeerService_JoinChannel_FullMethodName  = "/peer.PeerService/JoinChannel"
-	PeerService_GetPeerInfo_FullMethodName  = "/peer.PeerService/GetPeerInfo"
-	PeerService_HealthCheck_FullMethodName  = "/peer.PeerService/HealthCheck"
 )
 
 // PeerServiceClient is the client API for PeerService service.
@@ -36,9 +34,6 @@ type PeerServiceClient interface {
 	ProcessBlock(ctx context.Context, in *common.Envelope, opts ...grpc.CallOption) (*ProcessBlockResponse, error)
 	// 채널 참여
 	JoinChannel(ctx context.Context, in *JoinChannelRequest, opts ...grpc.CallOption) (*JoinChannelResponse, error)
-	// 상태 확인
-	GetPeerInfo(ctx context.Context, in *PeerInfoRequest, opts ...grpc.CallOption) (*PeerInfoResponse, error)
-	HealthCheck(ctx context.Context, in *HealthCheckRequest, opts ...grpc.CallOption) (*HealthCheckResponse, error)
 }
 
 type peerServiceClient struct {
@@ -69,26 +64,6 @@ func (c *peerServiceClient) JoinChannel(ctx context.Context, in *JoinChannelRequ
 	return out, nil
 }
 
-func (c *peerServiceClient) GetPeerInfo(ctx context.Context, in *PeerInfoRequest, opts ...grpc.CallOption) (*PeerInfoResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(PeerInfoResponse)
-	err := c.cc.Invoke(ctx, PeerService_GetPeerInfo_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *peerServiceClient) HealthCheck(ctx context.Context, in *HealthCheckRequest, opts ...grpc.CallOption) (*HealthCheckResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(HealthCheckResponse)
-	err := c.cc.Invoke(ctx, PeerService_HealthCheck_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // PeerServiceServer is the server API for PeerService service.
 // All implementations must embed UnimplementedPeerServiceServer
 // for forward compatibility.
@@ -99,9 +74,6 @@ type PeerServiceServer interface {
 	ProcessBlock(context.Context, *common.Envelope) (*ProcessBlockResponse, error)
 	// 채널 참여
 	JoinChannel(context.Context, *JoinChannelRequest) (*JoinChannelResponse, error)
-	// 상태 확인
-	GetPeerInfo(context.Context, *PeerInfoRequest) (*PeerInfoResponse, error)
-	HealthCheck(context.Context, *HealthCheckRequest) (*HealthCheckResponse, error)
 	mustEmbedUnimplementedPeerServiceServer()
 }
 
@@ -117,12 +89,6 @@ func (UnimplementedPeerServiceServer) ProcessBlock(context.Context, *common.Enve
 }
 func (UnimplementedPeerServiceServer) JoinChannel(context.Context, *JoinChannelRequest) (*JoinChannelResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method JoinChannel not implemented")
-}
-func (UnimplementedPeerServiceServer) GetPeerInfo(context.Context, *PeerInfoRequest) (*PeerInfoResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetPeerInfo not implemented")
-}
-func (UnimplementedPeerServiceServer) HealthCheck(context.Context, *HealthCheckRequest) (*HealthCheckResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method HealthCheck not implemented")
 }
 func (UnimplementedPeerServiceServer) mustEmbedUnimplementedPeerServiceServer() {}
 func (UnimplementedPeerServiceServer) testEmbeddedByValue()                     {}
@@ -181,42 +147,6 @@ func _PeerService_JoinChannel_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
-func _PeerService_GetPeerInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(PeerInfoRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(PeerServiceServer).GetPeerInfo(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: PeerService_GetPeerInfo_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(PeerServiceServer).GetPeerInfo(ctx, req.(*PeerInfoRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _PeerService_HealthCheck_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(HealthCheckRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(PeerServiceServer).HealthCheck(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: PeerService_HealthCheck_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(PeerServiceServer).HealthCheck(ctx, req.(*HealthCheckRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 // PeerService_ServiceDesc is the grpc.ServiceDesc for PeerService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -231,14 +161,6 @@ var PeerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "JoinChannel",
 			Handler:    _PeerService_JoinChannel_Handler,
-		},
-		{
-			MethodName: "GetPeerInfo",
-			Handler:    _PeerService_GetPeerInfo_Handler,
-		},
-		{
-			MethodName: "HealthCheck",
-			Handler:    _PeerService_HealthCheck_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

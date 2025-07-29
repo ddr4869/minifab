@@ -22,115 +22,6 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// PeerStatus - Peer 상태
-type PeerStatus int32
-
-const (
-	PeerStatus_ACTIVE   PeerStatus = 0
-	PeerStatus_INACTIVE PeerStatus = 1
-	PeerStatus_JOINING  PeerStatus = 2
-	PeerStatus_SYNCING  PeerStatus = 3
-	PeerStatus_ERROR    PeerStatus = 4
-)
-
-// Enum value maps for PeerStatus.
-var (
-	PeerStatus_name = map[int32]string{
-		0: "ACTIVE",
-		1: "INACTIVE",
-		2: "JOINING",
-		3: "SYNCING",
-		4: "ERROR",
-	}
-	PeerStatus_value = map[string]int32{
-		"ACTIVE":   0,
-		"INACTIVE": 1,
-		"JOINING":  2,
-		"SYNCING":  3,
-		"ERROR":    4,
-	}
-)
-
-func (x PeerStatus) Enum() *PeerStatus {
-	p := new(PeerStatus)
-	*p = x
-	return p
-}
-
-func (x PeerStatus) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (PeerStatus) Descriptor() protoreflect.EnumDescriptor {
-	return file_proto_peer_peer_proto_enumTypes[0].Descriptor()
-}
-
-func (PeerStatus) Type() protoreflect.EnumType {
-	return &file_proto_peer_peer_proto_enumTypes[0]
-}
-
-func (x PeerStatus) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use PeerStatus.Descriptor instead.
-func (PeerStatus) EnumDescriptor() ([]byte, []int) {
-	return file_proto_peer_peer_proto_rawDescGZIP(), []int{0}
-}
-
-// ServiceHealth - 서비스 헬스
-type ServiceHealth int32
-
-const (
-	ServiceHealth_HEALTHY        ServiceHealth = 0
-	ServiceHealth_UNHEALTHY      ServiceHealth = 1
-	ServiceHealth_DEGRADED       ServiceHealth = 2
-	ServiceHealth_UNKNOWN_HEALTH ServiceHealth = 3
-)
-
-// Enum value maps for ServiceHealth.
-var (
-	ServiceHealth_name = map[int32]string{
-		0: "HEALTHY",
-		1: "UNHEALTHY",
-		2: "DEGRADED",
-		3: "UNKNOWN_HEALTH",
-	}
-	ServiceHealth_value = map[string]int32{
-		"HEALTHY":        0,
-		"UNHEALTHY":      1,
-		"DEGRADED":       2,
-		"UNKNOWN_HEALTH": 3,
-	}
-)
-
-func (x ServiceHealth) Enum() *ServiceHealth {
-	p := new(ServiceHealth)
-	*p = x
-	return p
-}
-
-func (x ServiceHealth) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (ServiceHealth) Descriptor() protoreflect.EnumDescriptor {
-	return file_proto_peer_peer_proto_enumTypes[1].Descriptor()
-}
-
-func (ServiceHealth) Type() protoreflect.EnumType {
-	return &file_proto_peer_peer_proto_enumTypes[1]
-}
-
-func (x ServiceHealth) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use ServiceHealth.Descriptor instead.
-func (ServiceHealth) EnumDescriptor() ([]byte, []int) {
-	return file_proto_peer_peer_proto_rawDescGZIP(), []int{1}
-}
-
 // ProcessBlockResponse - 블록 처리 응답
 type ProcessBlockResponse struct {
 	state               protoimpl.MessageState `protogen:"open.v1"`
@@ -346,356 +237,6 @@ func (x *JoinChannelResponse) GetCurrentHeight() uint64 {
 	return 0
 }
 
-// PeerInfoRequest - Peer 정보 요청
-type PeerInfoRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	PeerId        string                 `protobuf:"bytes,1,opt,name=peer_id,json=peerId,proto3" json:"peer_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *PeerInfoRequest) Reset() {
-	*x = PeerInfoRequest{}
-	mi := &file_proto_peer_peer_proto_msgTypes[3]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *PeerInfoRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*PeerInfoRequest) ProtoMessage() {}
-
-func (x *PeerInfoRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_peer_peer_proto_msgTypes[3]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use PeerInfoRequest.ProtoReflect.Descriptor instead.
-func (*PeerInfoRequest) Descriptor() ([]byte, []int) {
-	return file_proto_peer_peer_proto_rawDescGZIP(), []int{3}
-}
-
-func (x *PeerInfoRequest) GetPeerId() string {
-	if x != nil {
-		return x.PeerId
-	}
-	return ""
-}
-
-// PeerInfoResponse - Peer 정보 응답
-type PeerInfoResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Status        common.StatusCode      `protobuf:"varint,1,opt,name=status,proto3,enum=common.StatusCode" json:"status,omitempty"`
-	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
-	Info          *PeerInfo              `protobuf:"bytes,3,opt,name=info,proto3" json:"info,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *PeerInfoResponse) Reset() {
-	*x = PeerInfoResponse{}
-	mi := &file_proto_peer_peer_proto_msgTypes[4]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *PeerInfoResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*PeerInfoResponse) ProtoMessage() {}
-
-func (x *PeerInfoResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_peer_peer_proto_msgTypes[4]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use PeerInfoResponse.ProtoReflect.Descriptor instead.
-func (*PeerInfoResponse) Descriptor() ([]byte, []int) {
-	return file_proto_peer_peer_proto_rawDescGZIP(), []int{4}
-}
-
-func (x *PeerInfoResponse) GetStatus() common.StatusCode {
-	if x != nil {
-		return x.Status
-	}
-	return common.StatusCode(0)
-}
-
-func (x *PeerInfoResponse) GetMessage() string {
-	if x != nil {
-		return x.Message
-	}
-	return ""
-}
-
-func (x *PeerInfoResponse) GetInfo() *PeerInfo {
-	if x != nil {
-		return x.Info
-	}
-	return nil
-}
-
-// PeerInfo - Peer 정보
-type PeerInfo struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	PeerId        string                 `protobuf:"bytes,1,opt,name=peer_id,json=peerId,proto3" json:"peer_id,omitempty"`
-	Endpoint      string                 `protobuf:"bytes,2,opt,name=endpoint,proto3" json:"endpoint,omitempty"`
-	Channels      []string               `protobuf:"bytes,3,rep,name=channels,proto3" json:"channels,omitempty"`
-	MspId         string                 `protobuf:"bytes,4,opt,name=msp_id,json=mspId,proto3" json:"msp_id,omitempty"`
-	PeerStatus    PeerStatus             `protobuf:"varint,5,opt,name=peer_status,json=peerStatus,proto3,enum=peer.PeerStatus" json:"peer_status,omitempty"`
-	LedgerHeight  int64                  `protobuf:"varint,6,opt,name=ledger_height,json=ledgerHeight,proto3" json:"ledger_height,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *PeerInfo) Reset() {
-	*x = PeerInfo{}
-	mi := &file_proto_peer_peer_proto_msgTypes[5]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *PeerInfo) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*PeerInfo) ProtoMessage() {}
-
-func (x *PeerInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_peer_peer_proto_msgTypes[5]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use PeerInfo.ProtoReflect.Descriptor instead.
-func (*PeerInfo) Descriptor() ([]byte, []int) {
-	return file_proto_peer_peer_proto_rawDescGZIP(), []int{5}
-}
-
-func (x *PeerInfo) GetPeerId() string {
-	if x != nil {
-		return x.PeerId
-	}
-	return ""
-}
-
-func (x *PeerInfo) GetEndpoint() string {
-	if x != nil {
-		return x.Endpoint
-	}
-	return ""
-}
-
-func (x *PeerInfo) GetChannels() []string {
-	if x != nil {
-		return x.Channels
-	}
-	return nil
-}
-
-func (x *PeerInfo) GetMspId() string {
-	if x != nil {
-		return x.MspId
-	}
-	return ""
-}
-
-func (x *PeerInfo) GetPeerStatus() PeerStatus {
-	if x != nil {
-		return x.PeerStatus
-	}
-	return PeerStatus_ACTIVE
-}
-
-func (x *PeerInfo) GetLedgerHeight() int64 {
-	if x != nil {
-		return x.LedgerHeight
-	}
-	return 0
-}
-
-// HealthCheckRequest - 헬스 체크 요청
-type HealthCheckRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ServiceName   string                 `protobuf:"bytes,1,opt,name=service_name,json=serviceName,proto3" json:"service_name,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *HealthCheckRequest) Reset() {
-	*x = HealthCheckRequest{}
-	mi := &file_proto_peer_peer_proto_msgTypes[6]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *HealthCheckRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*HealthCheckRequest) ProtoMessage() {}
-
-func (x *HealthCheckRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_peer_peer_proto_msgTypes[6]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use HealthCheckRequest.ProtoReflect.Descriptor instead.
-func (*HealthCheckRequest) Descriptor() ([]byte, []int) {
-	return file_proto_peer_peer_proto_rawDescGZIP(), []int{6}
-}
-
-func (x *HealthCheckRequest) GetServiceName() string {
-	if x != nil {
-		return x.ServiceName
-	}
-	return ""
-}
-
-// HealthCheckResponse - 헬스 체크 응답
-type HealthCheckResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Status        common.StatusCode      `protobuf:"varint,1,opt,name=status,proto3,enum=common.StatusCode" json:"status,omitempty"`
-	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
-	HealthStatus  *HealthStatus          `protobuf:"bytes,3,opt,name=health_status,json=healthStatus,proto3" json:"health_status,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *HealthCheckResponse) Reset() {
-	*x = HealthCheckResponse{}
-	mi := &file_proto_peer_peer_proto_msgTypes[7]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *HealthCheckResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*HealthCheckResponse) ProtoMessage() {}
-
-func (x *HealthCheckResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_peer_peer_proto_msgTypes[7]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use HealthCheckResponse.ProtoReflect.Descriptor instead.
-func (*HealthCheckResponse) Descriptor() ([]byte, []int) {
-	return file_proto_peer_peer_proto_rawDescGZIP(), []int{7}
-}
-
-func (x *HealthCheckResponse) GetStatus() common.StatusCode {
-	if x != nil {
-		return x.Status
-	}
-	return common.StatusCode(0)
-}
-
-func (x *HealthCheckResponse) GetMessage() string {
-	if x != nil {
-		return x.Message
-	}
-	return ""
-}
-
-func (x *HealthCheckResponse) GetHealthStatus() *HealthStatus {
-	if x != nil {
-		return x.HealthStatus
-	}
-	return nil
-}
-
-// HealthStatus - 헬스 상태
-type HealthStatus struct {
-	state              protoimpl.MessageState `protogen:"open.v1"`
-	OverallHealth      ServiceHealth          `protobuf:"varint,1,opt,name=overall_health,json=overallHealth,proto3,enum=peer.ServiceHealth" json:"overall_health,omitempty"`
-	LastCheckTimestamp int64                  `protobuf:"varint,2,opt,name=last_check_timestamp,json=lastCheckTimestamp,proto3" json:"last_check_timestamp,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
-}
-
-func (x *HealthStatus) Reset() {
-	*x = HealthStatus{}
-	mi := &file_proto_peer_peer_proto_msgTypes[8]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *HealthStatus) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*HealthStatus) ProtoMessage() {}
-
-func (x *HealthStatus) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_peer_peer_proto_msgTypes[8]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use HealthStatus.ProtoReflect.Descriptor instead.
-func (*HealthStatus) Descriptor() ([]byte, []int) {
-	return file_proto_peer_peer_proto_rawDescGZIP(), []int{8}
-}
-
-func (x *HealthStatus) GetOverallHealth() ServiceHealth {
-	if x != nil {
-		return x.OverallHealth
-	}
-	return ServiceHealth_HEALTHY
-}
-
-func (x *HealthStatus) GetLastCheckTimestamp() int64 {
-	if x != nil {
-		return x.LastCheckTimestamp
-	}
-	return 0
-}
-
 var File_proto_peer_peer_proto protoreflect.FileDescriptor
 
 const file_proto_peer_peer_proto_rawDesc = "" +
@@ -718,48 +259,10 @@ const file_proto_peer_peer_proto_rawDesc = "" +
 	"\amessage\x18\x02 \x01(\tR\amessage\x12\x1d\n" +
 	"\n" +
 	"channel_id\x18\x03 \x01(\tR\tchannelId\x12%\n" +
-	"\x0ecurrent_height\x18\x04 \x01(\x04R\rcurrentHeight\"*\n" +
-	"\x0fPeerInfoRequest\x12\x17\n" +
-	"\apeer_id\x18\x01 \x01(\tR\x06peerId\"|\n" +
-	"\x10PeerInfoResponse\x12*\n" +
-	"\x06status\x18\x01 \x01(\x0e2\x12.common.StatusCodeR\x06status\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage\x12\"\n" +
-	"\x04info\x18\x03 \x01(\v2\x0e.peer.PeerInfoR\x04info\"\xca\x01\n" +
-	"\bPeerInfo\x12\x17\n" +
-	"\apeer_id\x18\x01 \x01(\tR\x06peerId\x12\x1a\n" +
-	"\bendpoint\x18\x02 \x01(\tR\bendpoint\x12\x1a\n" +
-	"\bchannels\x18\x03 \x03(\tR\bchannels\x12\x15\n" +
-	"\x06msp_id\x18\x04 \x01(\tR\x05mspId\x121\n" +
-	"\vpeer_status\x18\x05 \x01(\x0e2\x10.peer.PeerStatusR\n" +
-	"peerStatus\x12#\n" +
-	"\rledger_height\x18\x06 \x01(\x03R\fledgerHeight\"7\n" +
-	"\x12HealthCheckRequest\x12!\n" +
-	"\fservice_name\x18\x01 \x01(\tR\vserviceName\"\x94\x01\n" +
-	"\x13HealthCheckResponse\x12*\n" +
-	"\x06status\x18\x01 \x01(\x0e2\x12.common.StatusCodeR\x06status\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage\x127\n" +
-	"\rhealth_status\x18\x03 \x01(\v2\x12.peer.HealthStatusR\fhealthStatus\"|\n" +
-	"\fHealthStatus\x12:\n" +
-	"\x0eoverall_health\x18\x01 \x01(\x0e2\x13.peer.ServiceHealthR\roverallHealth\x120\n" +
-	"\x14last_check_timestamp\x18\x02 \x01(\x03R\x12lastCheckTimestamp*K\n" +
-	"\n" +
-	"PeerStatus\x12\n" +
-	"\n" +
-	"\x06ACTIVE\x10\x00\x12\f\n" +
-	"\bINACTIVE\x10\x01\x12\v\n" +
-	"\aJOINING\x10\x02\x12\v\n" +
-	"\aSYNCING\x10\x03\x12\t\n" +
-	"\x05ERROR\x10\x04*M\n" +
-	"\rServiceHealth\x12\v\n" +
-	"\aHEALTHY\x10\x00\x12\r\n" +
-	"\tUNHEALTHY\x10\x01\x12\f\n" +
-	"\bDEGRADED\x10\x02\x12\x12\n" +
-	"\x0eUNKNOWN_HEALTH\x10\x032\x99\x02\n" +
+	"\x0ecurrent_height\x18\x04 \x01(\x04R\rcurrentHeight2\x93\x01\n" +
 	"\vPeerService\x12>\n" +
 	"\fProcessBlock\x12\x10.common.Envelope\x1a\x1a.peer.ProcessBlockResponse\"\x00\x12D\n" +
-	"\vJoinChannel\x12\x18.peer.JoinChannelRequest\x1a\x19.peer.JoinChannelResponse\"\x00\x12>\n" +
-	"\vGetPeerInfo\x12\x15.peer.PeerInfoRequest\x1a\x16.peer.PeerInfoResponse\"\x00\x12D\n" +
-	"\vHealthCheck\x12\x18.peer.HealthCheckRequest\x1a\x19.peer.HealthCheckResponse\"\x00B'Z%github.com/ddr4869/minifab/proto/peerb\x06proto3"
+	"\vJoinChannel\x12\x18.peer.JoinChannelRequest\x1a\x19.peer.JoinChannelResponse\"\x00B'Z%github.com/ddr4869/minifab/proto/peerb\x06proto3"
 
 var (
 	file_proto_peer_peer_proto_rawDescOnce sync.Once
@@ -773,47 +276,28 @@ func file_proto_peer_peer_proto_rawDescGZIP() []byte {
 	return file_proto_peer_peer_proto_rawDescData
 }
 
-var file_proto_peer_peer_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_proto_peer_peer_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_proto_peer_peer_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_proto_peer_peer_proto_goTypes = []any{
-	(PeerStatus)(0),              // 0: peer.PeerStatus
-	(ServiceHealth)(0),           // 1: peer.ServiceHealth
-	(*ProcessBlockResponse)(nil), // 2: peer.ProcessBlockResponse
-	(*JoinChannelRequest)(nil),   // 3: peer.JoinChannelRequest
-	(*JoinChannelResponse)(nil),  // 4: peer.JoinChannelResponse
-	(*PeerInfoRequest)(nil),      // 5: peer.PeerInfoRequest
-	(*PeerInfoResponse)(nil),     // 6: peer.PeerInfoResponse
-	(*PeerInfo)(nil),             // 7: peer.PeerInfo
-	(*HealthCheckRequest)(nil),   // 8: peer.HealthCheckRequest
-	(*HealthCheckResponse)(nil),  // 9: peer.HealthCheckResponse
-	(*HealthStatus)(nil),         // 10: peer.HealthStatus
-	(common.StatusCode)(0),       // 11: common.StatusCode
-	(*common.Block)(nil),         // 12: common.Block
-	(*common.Envelope)(nil),      // 13: common.Envelope
+	(*ProcessBlockResponse)(nil), // 0: peer.ProcessBlockResponse
+	(*JoinChannelRequest)(nil),   // 1: peer.JoinChannelRequest
+	(*JoinChannelResponse)(nil),  // 2: peer.JoinChannelResponse
+	(common.StatusCode)(0),       // 3: common.StatusCode
+	(*common.Block)(nil),         // 4: common.Block
+	(*common.Envelope)(nil),      // 5: common.Envelope
 }
 var file_proto_peer_peer_proto_depIdxs = []int32{
-	11, // 0: peer.ProcessBlockResponse.status:type_name -> common.StatusCode
-	12, // 1: peer.JoinChannelRequest.genesis_block:type_name -> common.Block
-	11, // 2: peer.JoinChannelResponse.status:type_name -> common.StatusCode
-	11, // 3: peer.PeerInfoResponse.status:type_name -> common.StatusCode
-	7,  // 4: peer.PeerInfoResponse.info:type_name -> peer.PeerInfo
-	0,  // 5: peer.PeerInfo.peer_status:type_name -> peer.PeerStatus
-	11, // 6: peer.HealthCheckResponse.status:type_name -> common.StatusCode
-	10, // 7: peer.HealthCheckResponse.health_status:type_name -> peer.HealthStatus
-	1,  // 8: peer.HealthStatus.overall_health:type_name -> peer.ServiceHealth
-	13, // 9: peer.PeerService.ProcessBlock:input_type -> common.Envelope
-	3,  // 10: peer.PeerService.JoinChannel:input_type -> peer.JoinChannelRequest
-	5,  // 11: peer.PeerService.GetPeerInfo:input_type -> peer.PeerInfoRequest
-	8,  // 12: peer.PeerService.HealthCheck:input_type -> peer.HealthCheckRequest
-	2,  // 13: peer.PeerService.ProcessBlock:output_type -> peer.ProcessBlockResponse
-	4,  // 14: peer.PeerService.JoinChannel:output_type -> peer.JoinChannelResponse
-	6,  // 15: peer.PeerService.GetPeerInfo:output_type -> peer.PeerInfoResponse
-	9,  // 16: peer.PeerService.HealthCheck:output_type -> peer.HealthCheckResponse
-	13, // [13:17] is the sub-list for method output_type
-	9,  // [9:13] is the sub-list for method input_type
-	9,  // [9:9] is the sub-list for extension type_name
-	9,  // [9:9] is the sub-list for extension extendee
-	0,  // [0:9] is the sub-list for field type_name
+	3, // 0: peer.ProcessBlockResponse.status:type_name -> common.StatusCode
+	4, // 1: peer.JoinChannelRequest.genesis_block:type_name -> common.Block
+	3, // 2: peer.JoinChannelResponse.status:type_name -> common.StatusCode
+	5, // 3: peer.PeerService.ProcessBlock:input_type -> common.Envelope
+	1, // 4: peer.PeerService.JoinChannel:input_type -> peer.JoinChannelRequest
+	0, // 5: peer.PeerService.ProcessBlock:output_type -> peer.ProcessBlockResponse
+	2, // 6: peer.PeerService.JoinChannel:output_type -> peer.JoinChannelResponse
+	5, // [5:7] is the sub-list for method output_type
+	3, // [3:5] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_proto_peer_peer_proto_init() }
@@ -826,14 +310,13 @@ func file_proto_peer_peer_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_peer_peer_proto_rawDesc), len(file_proto_peer_peer_proto_rawDesc)),
-			NumEnums:      2,
-			NumMessages:   9,
+			NumEnums:      0,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
 		GoTypes:           file_proto_peer_peer_proto_goTypes,
 		DependencyIndexes: file_proto_peer_peer_proto_depIdxs,
-		EnumInfos:         file_proto_peer_peer_proto_enumTypes,
 		MessageInfos:      file_proto_peer_peer_proto_msgTypes,
 	}.Build()
 	File_proto_peer_peer_proto = out.File

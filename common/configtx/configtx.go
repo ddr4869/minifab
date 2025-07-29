@@ -2,6 +2,7 @@ package configtx
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
@@ -101,6 +102,31 @@ func (c *ConfigTx) GetAppChannelProfile(name string) (*AppChannelProfile, error)
 		return nil, fmt.Errorf("failed to unmarshal as AppChannelProfile: %v", err)
 	}
 	return &appChannelProfile, nil
+}
+
+func ConvertConfigtx(configTxPath, profile string) (*ConfigTx, error) {
+	if configTxPath == "" {
+		return nil, errors.Errorf("configtx path cannot be empty")
+	}
+
+	// configtx.yaml 파일 존재 확인
+	if _, err := os.Stat(configTxPath); os.IsNotExist(err) {
+		return nil, errors.Errorf("configtx file does not exist: %s", configTxPath)
+	}
+
+	// configtx.yaml 파일 읽기
+	data, err := os.ReadFile(configTxPath)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to read configtx file")
+	}
+
+	// YAML 파싱
+	var configTx ConfigTx
+	if err := yaml.Unmarshal(data, &configTx); err != nil {
+		return nil, errors.Wrap(err, "failed to parse configtx YAML")
+	}
+
+	return &configTx, nil
 }
 
 // parseBatchSizeBytes 크기 문자열을 바이트 수로 변환 ("128 MB" -> 134217728)
