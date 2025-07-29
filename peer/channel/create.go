@@ -3,23 +3,25 @@ package channel
 import (
 	"context"
 	"crypto/rand"
+	"encoding/json"
 	"log"
-	"os"
 	"time"
 
+	"github.com/ddr4869/minifab/common/blockutil"
 	"github.com/ddr4869/minifab/common/configtx"
 	"github.com/ddr4869/minifab/common/logger"
 	"github.com/ddr4869/minifab/peer/core"
 	pb_common "github.com/ddr4869/minifab/proto/common"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 const cfgFile = "config/configtx.yaml"
 
 // getChannelCreateCmd는 새로운 채널을 생성합니다
-func getChannelCreateCmd(peer *core.Peer) *cobra.Command {
+func ChannelCreateCmd(peer *core.Peer) *cobra.Command {
 	var channelName string
 	var profileName string
 
@@ -50,20 +52,30 @@ func getChannelCreateCmd(peer *core.Peer) *cobra.Command {
 	return cmd
 }
 
-// CreateChannel creates a channel with specific profile via orderer and then creates it locally
 func CreateChannel(peer *core.Peer, channelName, profileName string) error {
-	// logger.Infof("[Peer] Creating channel: %s with profile: %s", channelName, profileName)
+
+	// #TODO :phase 0 - check peer's identity
 	if peer.OrdererClient == nil {
 		return errors.New("orderer client is required for channel creation")
 	}
 
+	// #phase 1 - create config block
+	appConfigBlock, err := generateAppConfigBlock(peer, channelName, profileName)
+	if err != nil {
+		return errors.Wrap(err, "failed to generate app config block")
+	}
+	protoData, err := proto.Marshal(appConfigBlock)
+	if err != nil {
+		return errors.Wrap(err, "failed to marshal genesis block")
+	}
+
+	if err := blockutil.SaveBlock(protoData, channelName); err != nil {
+		return errors.Wrap(err, "failed to save config block")
+	}
+
+	// #phase 2 - send config block to orderer
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-
-	appConfig, err := os.ReadFile(cfgFile)
-	if err != nil {
-		return errors.Wrapf(err, "failed to read configtx file")
-	}
 
 	payload := &pb_common.Payload{
 		Header: &pb_common.Header{
@@ -71,7 +83,7 @@ func CreateChannel(peer *core.Peer, channelName, profileName string) error {
 			ChannelId: channelName,
 			Timestamp: timestamppb.Now(),
 		},
-		Data: appConfig,
+		Data: protoData,
 	}
 
 	stream, err := peer.OrdererClient.GetClient().CreateChannel(ctx)
@@ -97,9 +109,23 @@ func CreateChannel(peer *core.Peer, channelName, profileName string) error {
 	return nil
 }
 
+func generateAppConfigBlock(peer *core.Peer, channelName, profileName string) (*pb_common.ConfigBlock, error) {
+	appConfig, err := CreateAppConfigFromConfigTx(cfgFile, profileName)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create app config")
+	}
+
+	appConfigBytes, err := json.Marshal(appConfig)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to marshal app config")
+	}
+
+	return blockutil.GenerateConfigBlock(appConfigBytes, channelName, peer.PeerConfig.Msp.GetSigningIdentity())
+}
+
 func CreateAppConfigFromConfigTx(configTxPath string, profile string) (*configtx.ChannelConfig, error) {
 
-	configTx, err := configtx.ConvertConfigtx(configTxPath, profile)
+	configTx, err := configtx.ConvertConfigtx(configTxPath)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to convert configtx")
 	}

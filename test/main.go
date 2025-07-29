@@ -81,7 +81,7 @@ func main() {
 }
 
 // loadGenesisBlock genesis.block 파일을 읽어서 GenesisBlock 객체로 반환
-func loadGenesisBlock(filePath string) (*pb_common.GenesisBlock, error) {
+func loadGenesisBlock(filePath string) (*pb_common.ConfigBlock, error) {
 	// 파일 읽기
 	data, err := os.ReadFile(filePath)
 	if err != nil {
@@ -89,7 +89,7 @@ func loadGenesisBlock(filePath string) (*pb_common.GenesisBlock, error) {
 	}
 
 	// protobuf 역직렬화
-	genesisBlock := &pb_common.GenesisBlock{}
+	genesisBlock := &pb_common.ConfigBlock{}
 	if err := proto.Unmarshal(data, genesisBlock); err != nil {
 		return nil, fmt.Errorf("protobuf 역직렬화 실패: %w", err)
 	}

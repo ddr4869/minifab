@@ -1,17 +1,13 @@
 package bootstrap
 
 import (
-	"crypto/rand"
 	"encoding/json"
-	"fmt"
 	"os"
-	"time"
 
 	"github.com/ddr4869/minifab/common/blockutil"
 	"github.com/ddr4869/minifab/common/configtx"
 	"github.com/ddr4869/minifab/common/logger"
 	"github.com/ddr4869/minifab/common/msp"
-	pb_common "github.com/ddr4869/minifab/proto/common"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/proto"
@@ -25,6 +21,11 @@ var (
 	configTxPath string
 	profile      string
 	bootstrap    bool
+)
+
+const (
+	systemChannelName = "SYSTEM_CHANNEL"
+	genesisBlockPath  = "./blocks/genesis.block"
 )
 
 func Cmd() *cobra.Command {
@@ -74,7 +75,7 @@ func runBootstrap(cmd *cobra.Command, args []string) {
 // CreateGenesisConfigFromConfigTx configtx.yaml 파일에서 ConfigTx 생성
 func CreateGenesisConfigFromConfigTx(configTxPath string, profile string) (*configtx.SystemChannelInfo, error) {
 
-	configTx, err := configtx.ConvertConfigtx(configTxPath, profile)
+	configTx, err := configtx.ConvertConfigtx(configTxPath)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to convert configtx")
 	}
@@ -107,51 +108,14 @@ func generateGenesisBlock(genesisConfig *configtx.SystemChannelInfo) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to marshal genesis config")
 	}
-
-	header := &pb_common.BlockHeader{
-		Number:       0,
-		PreviousHash: nil,
-		HeaderType:   pb_common.BlockType_BLOCK_TYPE_CONFIG,
-	}
-
-	blockData := &pb_common.BlockData{
-		Transactions: [][]byte{
-			configTxData,
-		},
-	}
-
 	msp, err := msp.LoadMSPFromFiles(mspID, mspPath)
 	if err != nil {
 		return errors.Wrap(err, "failed to load MSP")
 	}
 
-	signer := msp.GetSigningIdentity()
-	signature, err := signer.Sign(rand.Reader, configTxData, nil)
+	genesisBlock, err := blockutil.GenerateConfigBlock(configTxData, systemChannelName, msp.GetSigningIdentity())
 	if err != nil {
-		return errors.Wrap(err, "failed to sign config tx")
-	}
-
-	metadata := &pb_common.BlockMetadata{
-		CreatorCertificate: signer.GetCertificate().Raw,
-		CreatorSignature:   signature,
-		ValidationBitmap:   []byte{1},
-		AccumulatedHash:    []byte{},
-	}
-
-	block := &pb_common.Block{
-		Header:   header,
-		Data:     blockData,
-		Metadata: metadata,
-	}
-
-	header.CurrentBlockHash = blockutil.CalculateBlockHash(block)
-
-	genesisBlock := &pb_common.GenesisBlock{
-		Block:       block,
-		ChannelId:   "SYSTEM_CHANNEL",
-		StoredAt:    time.Now().Format(time.RFC3339),
-		IsCommitted: true,
-		BlockHash:   fmt.Sprintf("%x", header.CurrentBlockHash),
+		return errors.Wrap(err, "failed to generate genesis block")
 	}
 
 	// protobuf로 직렬화
@@ -160,10 +124,10 @@ func generateGenesisBlock(genesisConfig *configtx.SystemChannelInfo) error {
 		return errors.Wrap(err, "failed to marshal genesis block")
 	}
 
-	if err := os.WriteFile("./blocks/genesis.block", protoData, 0644); err != nil {
+	if err := os.WriteFile(genesisBlockPath, protoData, 0644); err != nil {
 		return errors.Wrap(err, "failed to write genesis block file")
 	}
-	logger.Info("Genesis block created and saved at blocks/genesis.block successfully")
+	logger.Info("Genesis block created and saved at %s successfully", genesisBlockPath)
 
 	jsonData, err := json.MarshalIndent(genesisBlock, "", "  ")
 	if err != nil {

@@ -653,8 +653,8 @@ func (x *Block) GetMetadata() *BlockMetadata {
 	return nil
 }
 
-// Genesis Block - 제네시스 블록
-type GenesisBlock struct {
+// Config block
+type ConfigBlock struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Block         *Block                 `protobuf:"bytes,1,opt,name=block,proto3" json:"block,omitempty"`                                 // 블록
 	ChannelId     string                 `protobuf:"bytes,2,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`        // 채널 ID
@@ -665,20 +665,20 @@ type GenesisBlock struct {
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *GenesisBlock) Reset() {
-	*x = GenesisBlock{}
+func (x *ConfigBlock) Reset() {
+	*x = ConfigBlock{}
 	mi := &file_proto_common_common_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *GenesisBlock) String() string {
+func (x *ConfigBlock) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GenesisBlock) ProtoMessage() {}
+func (*ConfigBlock) ProtoMessage() {}
 
-func (x *GenesisBlock) ProtoReflect() protoreflect.Message {
+func (x *ConfigBlock) ProtoReflect() protoreflect.Message {
 	mi := &file_proto_common_common_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -690,40 +690,40 @@ func (x *GenesisBlock) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use GenesisBlock.ProtoReflect.Descriptor instead.
-func (*GenesisBlock) Descriptor() ([]byte, []int) {
+// Deprecated: Use ConfigBlock.ProtoReflect.Descriptor instead.
+func (*ConfigBlock) Descriptor() ([]byte, []int) {
 	return file_proto_common_common_proto_rawDescGZIP(), []int{7}
 }
 
-func (x *GenesisBlock) GetBlock() *Block {
+func (x *ConfigBlock) GetBlock() *Block {
 	if x != nil {
 		return x.Block
 	}
 	return nil
 }
 
-func (x *GenesisBlock) GetChannelId() string {
+func (x *ConfigBlock) GetChannelId() string {
 	if x != nil {
 		return x.ChannelId
 	}
 	return ""
 }
 
-func (x *GenesisBlock) GetStoredAt() string {
+func (x *ConfigBlock) GetStoredAt() string {
 	if x != nil {
 		return x.StoredAt
 	}
 	return ""
 }
 
-func (x *GenesisBlock) GetIsCommitted() bool {
+func (x *ConfigBlock) GetIsCommitted() bool {
 	if x != nil {
 		return x.IsCommitted
 	}
 	return false
 }
 
-func (x *GenesisBlock) GetBlockHash() string {
+func (x *ConfigBlock) GetBlockHash() string {
 	if x != nil {
 		return x.BlockHash
 	}
@@ -857,8 +857,8 @@ const file_proto_common_common_proto_rawDesc = "" +
 	"\x05Block\x12+\n" +
 	"\x06header\x18\x01 \x01(\v2\x13.common.BlockHeaderR\x06header\x12%\n" +
 	"\x04data\x18\x02 \x01(\v2\x11.common.BlockDataR\x04data\x121\n" +
-	"\bmetadata\x18\x03 \x01(\v2\x15.common.BlockMetadataR\bmetadata\"\xb1\x01\n" +
-	"\fGenesisBlock\x12#\n" +
+	"\bmetadata\x18\x03 \x01(\v2\x15.common.BlockMetadataR\bmetadata\"\xb0\x01\n" +
+	"\vConfigBlock\x12#\n" +
 	"\x05block\x18\x01 \x01(\v2\r.common.BlockR\x05block\x12\x1d\n" +
 	"\n" +
 	"channel_id\x18\x02 \x01(\tR\tchannelId\x12\x1b\n" +
@@ -932,7 +932,7 @@ var file_proto_common_common_proto_goTypes = []any{
 	(*BlockData)(nil),             // 7: common.BlockData
 	(*BlockMetadata)(nil),         // 8: common.BlockMetadata
 	(*Block)(nil),                 // 9: common.Block
-	(*GenesisBlock)(nil),          // 10: common.GenesisBlock
+	(*ConfigBlock)(nil),           // 10: common.ConfigBlock
 	(*Transaction)(nil),           // 11: common.Transaction
 	(*timestamppb.Timestamp)(nil), // 12: google.protobuf.Timestamp
 }
@@ -945,7 +945,7 @@ var file_proto_common_common_proto_depIdxs = []int32{
 	6,  // 5: common.Block.header:type_name -> common.BlockHeader
 	7,  // 6: common.Block.data:type_name -> common.BlockData
 	8,  // 7: common.Block.metadata:type_name -> common.BlockMetadata
-	9,  // 8: common.GenesisBlock.block:type_name -> common.Block
+	9,  // 8: common.ConfigBlock.block:type_name -> common.Block
 	2,  // 9: common.Transaction.type:type_name -> common.BlockType
 	10, // [10:10] is the sub-list for method output_type
 	10, // [10:10] is the sub-list for method input_type

@@ -10,13 +10,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ddr4869/minifab/common/configtx"
 	"github.com/ddr4869/minifab/common/logger"
 	pb_common "github.com/ddr4869/minifab/proto/common"
 	pb_orderer "github.com/ddr4869/minifab/proto/orderer"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
-	"gopkg.in/yaml.v3"
 )
 
 type OrdererServer struct {
@@ -32,43 +30,6 @@ func NewOrdererServer(orderer *Orderer) *OrdererServer {
 	}
 }
 
-// func (s *OrdererServer) SubmitTransaction(ctx context.Context, req *pb_orderer.Transaction) (*pb_orderer.TransactionResponse, error) {
-// 	s.mutex.Lock()
-// 	defer s.mutex.Unlock()
-
-// 	// 트랜잭션을 블록에 추가
-// 	block, err := s.orderer.CreateBlock(req.Payload)
-// 	if err != nil {
-// 		return &pb_orderer.TransactionResponse{
-// 			Status:        pb_orderer.StatusCode_INTERNAL_ERROR,
-// 			Message:       fmt.Sprintf("Failed to create block: %v", err),
-// 			TransactionId: req.Id,
-// 		}, nil
-// 	}
-
-// 	return &pb_orderer.TransactionResponse{
-// 		Status:        pb_orderer.StatusCode_OK,
-// 		Message:       fmt.Sprintf("Transaction %s added to block %d", req.Id, block.Header.Number),
-// 		TransactionId: req.Id,
-// 	}, nil
-// }
-
-// func (s *OrdererServer) GetBlock(ctx context.Context, req *pb_orderer.BlockRequest) (*pb_orderer.Block, error) {
-// 	logger.Infof("GetBlock request for block %d on channel %s", req.BlockNumber, req.ChannelId)
-
-// 	// Convert to protobuf format
-// 	pb_ordererBlock := &pb_orderer.Block{
-// 		Number:       block.Number,
-// 		PreviousHash: block.PreviousHash,
-// 		DataHash:     block.Data, // Changed from Data to DataHash
-// 		Timestamp:    block.Timestamp.Unix(),
-// 		ChannelId:    req.ChannelId,
-// 	}
-
-// 	logger.Infof("Successfully retrieved block %d", req.BlockNumber)
-// 	return pb_ordererBlock, nil
-// }
-
 func (s *OrdererServer) CreateChannel(stream pb_orderer.OrdererService_CreateChannelServer) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
@@ -80,15 +41,12 @@ func (s *OrdererServer) CreateChannel(stream pb_orderer.OrdererService_CreateCha
 		}
 		logger.Infof("[Orderer] Received message: %s", msg.Payload.Data)
 
-		var configTx configtx.ConfigTx
-		if err := yaml.Unmarshal(msg.Payload.Data, &configTx); err != nil {
-			return errors.Wrap(err, "failed to parse configtx YAML")
-		}
-
-		appConfig, err := configtx.GetAppChannelProfile(profileName)
-		if err != nil {
-			return errors.Wrap(err, "failed to convert configtx")
-		}
+		// #TODO : phase 1 - check if channel already exists
+		// #TODO : phase 2 - create config block
+		// #TODO : phase 3 - send config block to orderer
+		// #TODO : phase 4 - save config block to file
+		// #TODO : phase 5 - send config block to orderer
+		// #TODO : phase 6 - save config block to file
 		time.Sleep(3 * time.Second)
 
 		stream.Send(&pb_common.Block{

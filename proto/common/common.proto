@@ -95,8 +95,8 @@ message Block {
 }
 
 
-// Genesis Block - 제네시스 블록
-message GenesisBlock {
+// Config block
+message ConfigBlock {
     Block block = 1;                      // 블록
     string channel_id = 2;                // 채널 ID
     string stored_at = 3;                 // 저장 시간

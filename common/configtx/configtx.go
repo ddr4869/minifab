@@ -86,10 +86,10 @@ func (c *ConfigTx) GetSystemChannelInfo(name string) (*SystemChannelInfo, error)
 	return &systemProfile, nil
 }
 
-func (c *ConfigTx) GetAppChannelProfile(name string) (*AppChannelProfile, error) {
-	profileData, exists := c.Profiles[name]
+func (c *ConfigTx) GetAppChannelProfile(profileName string) (*AppChannelProfile, error) {
+	profileData, exists := c.Profiles[profileName]
 	if !exists {
-		return nil, fmt.Errorf("profile '%s' not found", name)
+		return nil, fmt.Errorf("profile '%s' not found", profileName)
 	}
 
 	yamlData, err := yaml.Marshal(profileData)
@@ -104,7 +104,7 @@ func (c *ConfigTx) GetAppChannelProfile(name string) (*AppChannelProfile, error)
 	return &appChannelProfile, nil
 }
 
-func ConvertConfigtx(configTxPath, profile string) (*ConfigTx, error) {
+func ConvertConfigtx(configTxPath string) (*ConfigTx, error) {
 	if configTxPath == "" {
 		return nil, errors.Errorf("configtx path cannot be empty")
 	}

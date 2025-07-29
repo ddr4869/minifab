@@ -42,7 +42,7 @@ func Cmd() *cobra.Command {
 	logger.Infof("✅ MSP ID: %s", peer.PeerConfig.Msp.GetSigningIdentity().GetIdentifier().Mspid)
 	logger.Infof("✅ MSP ID: %s", peer.PeerConfig.Msp.GetSigningIdentity().GetIdentifier().Id)
 
-	channelCmd.AddCommand(getChannelCreateCmd(peer))
+	channelCmd.AddCommand(ChannelCreateCmd(peer))
 	channelCmd.AddCommand(getChannelJoinCmd(peer))
 	channelCmd.AddCommand(getChannelListCmd(peer))
 
