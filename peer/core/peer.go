@@ -19,7 +19,7 @@ func NewPeer(peerId, mspId, mspPath, ordererAddress string) (*Peer, error) {
 	// MSP 파일들로부터 MSP, Identity, PrivateKey 로드
 	logger.Infof("✅ Creating peer with ID: %s, MSP ID: %s, MSP Path: %s, Orderer Address: %s", peerId, mspId, mspPath, ordererAddress)
 
-	fabricMSP, err := msp.CreateMSPFromFiles(mspId, mspPath)
+	fabricMSP, err := msp.LoadMSPFromFiles(mspId, mspPath)
 	if err != nil {
 		logger.Errorf("Failed to create MSP from files: %v", err)
 		return nil, err

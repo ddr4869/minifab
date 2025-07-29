@@ -10,14 +10,11 @@ import (
 	"github.com/pkg/errors"
 )
 
-// CreateMSPFromFiles MSP 파일들로부터 MSP 생성
-func CreateMSPFromFiles(mspID, mspPath string) (MSP, error) {
-	// MSP 구조 검증
+func LoadMSPFromFiles(mspID, mspPath string) (MSP, error) {
 	if err := ValidateMSPStructure(mspPath); err != nil {
 		return nil, errors.Wrap(err, "MSP structure validation failed")
 	}
 
-	// Identity 로드
 	msp, err := LoadMSP(mspID, mspPath)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load identity")
@@ -26,7 +23,6 @@ func CreateMSPFromFiles(mspID, mspPath string) (MSP, error) {
 	return msp, nil
 }
 
-// LoadMSP MSP 파일들로부터 MSP와 Identity 로드
 func LoadMSP(mspID, mspPath string) (MSP, error) {
 	cert, err := LoadSignCert(mspPath)
 	if err != nil {

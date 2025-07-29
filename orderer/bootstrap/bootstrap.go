@@ -1,13 +1,20 @@
 package bootstrap
 
 import (
+	"crypto/rand"
+	"encoding/json"
+	"fmt"
 	"os"
+	"time"
 
+	"github.com/ddr4869/minifab/common/blockutil"
 	"github.com/ddr4869/minifab/common/configtx"
 	"github.com/ddr4869/minifab/common/logger"
-	"github.com/ddr4869/minifab/orderer"
+	"github.com/ddr4869/minifab/common/msp"
+	pb_common "github.com/ddr4869/minifab/proto/common"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"google.golang.org/protobuf/proto"
 	"gopkg.in/yaml.v3"
 )
 
@@ -47,12 +54,6 @@ This command should be run once when setting up a new network.`,
 func runBootstrap(cmd *cobra.Command, args []string) {
 	logger.Info("Starting network bootstrap process...")
 
-	// Orderer 인스턴스 생성 (MSP 파일 사용)
-	o, err := orderer.NewOrderer(mspID, mspPath)
-	if err != nil {
-		logger.Fatalf("Failed to create orderer: %v", err)
-	}
-
 	// configtx.yaml에서 제네시스 설정 생성 (profile 인자 추가)
 	genesisConfig, err := CreateGenesisConfigFromConfigTx(configTxPath, profile)
 	if err != nil {
@@ -62,7 +63,7 @@ func runBootstrap(cmd *cobra.Command, args []string) {
 	logger.Info("Successfully loaded configuration from configtx.yaml")
 
 	// 네트워크 부트스트랩 실행
-	if err := o.BootstrapNetwork(genesisConfig); err != nil {
+	if err := bootstrapNetwork(genesisConfig); err != nil {
 		logger.Fatalf("Failed to bootstrap network: %v", err)
 	}
 
@@ -103,4 +104,93 @@ func CreateGenesisConfigFromConfigTx(configTxPath string, profile string) (*conf
 	logger.Infof("Successfully loaded configuration from %s with profile %s", configTxPath, profile)
 
 	return genesisConfig, nil
+}
+
+func bootstrapNetwork(genesisConfig *configtx.SystemChannelInfo) error {
+
+	err := generateGenesisBlock(genesisConfig)
+	if err != nil {
+		return errors.Wrap(err, "failed to generate genesis block")
+	}
+
+	logger.Info("Genesis block created and saved successfully")
+
+	return nil
+}
+
+func generateGenesisBlock(genesisConfig *configtx.SystemChannelInfo) error {
+	// 설정 트랜잭션 데이터 직렬화
+	configTxData, err := json.Marshal(genesisConfig)
+	if err != nil {
+		return errors.Wrap(err, "failed to marshal genesis config")
+	}
+
+	header := &pb_common.BlockHeader{
+		Number:       0,
+		PreviousHash: nil,
+		HeaderType:   pb_common.BlockType_BLOCK_TYPE_CONFIG,
+	}
+
+	blockData := &pb_common.BlockData{
+		Transactions: [][]byte{
+			configTxData,
+		},
+	}
+
+	msp, err := msp.LoadMSPFromFiles(mspID, mspPath)
+	if err != nil {
+		return errors.Wrap(err, "failed to load MSP")
+	}
+
+	signer := msp.GetSigningIdentity()
+	signature, err := signer.Sign(rand.Reader, configTxData, nil)
+	if err != nil {
+		return errors.Wrap(err, "failed to sign config tx")
+	}
+
+	metadata := &pb_common.BlockMetadata{
+		CreatorCertificate: signer.GetCertificate().Raw,
+		CreatorSignature:   signature,
+		ValidationBitmap:   []byte{1},
+		AccumulatedHash:    []byte{},
+	}
+
+	block := &pb_common.Block{
+		Header:   header,
+		Data:     blockData,
+		Metadata: metadata,
+	}
+
+	header.CurrentBlockHash = blockutil.CalculateBlockHash(block)
+
+	genesisBlock := &pb_common.GenesisBlock{
+		Block:       block,
+		ChannelId:   "SYSTEM_CHANNEL",
+		StoredAt:    time.Now().Format(time.RFC3339),
+		IsCommitted: true,
+		BlockHash:   fmt.Sprintf("%x", header.CurrentBlockHash),
+	}
+
+	// protobuf로 직렬화
+	protoData, err := proto.Marshal(genesisBlock)
+	if err != nil {
+		return errors.Wrap(err, "failed to marshal genesis block")
+	}
+
+	if err := os.WriteFile("./blocks/genesis.block", protoData, 0644); err != nil {
+		return errors.Wrap(err, "failed to write genesis block file")
+	}
+	logger.Info("Genesis block created and saved at blocks/genesis.block successfully")
+
+	jsonData, err := json.MarshalIndent(genesisBlock, "", "  ")
+	if err != nil {
+		return errors.Wrap(err, "failed to marshal genesis block to JSON")
+	}
+
+	if err := os.WriteFile("genesis.json", jsonData, 0644); err != nil {
+		return errors.Wrap(err, "failed to write genesis JSON file")
+	}
+	logger.Info("Genesis info created and saved at genesis.json successfully")
+
+	return nil
 }

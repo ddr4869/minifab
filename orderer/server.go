@@ -72,15 +72,6 @@ func (s *OrdererServer) CreateChannel(ctx context.Context, req *pb_orderer.Chann
 
 	logger.Infof("[Orderer] Creating channel: %s with profile: %s", req.ChannelName, req.Profile)
 
-	// 채널이 이미 존재하는지 확인
-	if _, exists := s.orderer.channels[req.ChannelName]; exists {
-		return &pb_orderer.ChannelResponse{
-			Status:    pb_common.StatusCode_OK,
-			Message:   fmt.Sprintf("Channel %s already exists", req.ChannelName),
-			ChannelId: req.ChannelName,
-		}, nil
-	}
-
 	// configtx.yaml 경로 설정 (기본값 사용)
 	configTxPath := req.ConfigtxPath
 	if configTxPath == "" {
