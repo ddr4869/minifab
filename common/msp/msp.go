@@ -2,11 +2,12 @@ package msp
 
 import (
 	"crypto"
+	"crypto/x509"
 )
 
 type MSP interface {
 	Setup(config *MSPConfig) error
-	GetIdentifier() *IdentityIdentifier
+	GetSigningIdentity() SigningIdentity
 	// ValidateIdentity(identity Identity) error
 	// DeserializeIdentity(serializedIdentity []byte) (Identity, error)
 	// IsWellFormed(identity *SerializedIdentity) error
@@ -15,6 +16,7 @@ type MSP interface {
 // Identity 인터페이스
 type Identity interface {
 	GetIdentifier() *IdentityIdentifier
+	GetCertificate() *x509.Certificate
 	Validate() error
 	// GetMSPIdentifier() string
 	// GetOrganizationalUnits() []*OUIdentifier

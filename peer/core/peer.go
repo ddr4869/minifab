@@ -27,8 +27,8 @@ func NewPeer(peerId, mspId, mspPath, ordererAddress string) (*Peer, error) {
 
 	logger.Infof("✅ Successfully loaded MSP from %s", mspPath)
 	logger.Info("📋 Identity Details:")
-	logger.Infof("   - ID: %s", fabricMSP.GetIdentifier().Id)
-	logger.Infof("   - MSP ID: %s", fabricMSP.GetIdentifier().Mspid)
+	logger.Infof("   - ID: %s", fabricMSP.GetSigningIdentity().GetIdentifier().Id)
+	logger.Infof("   - MSP ID: %s", fabricMSP.GetSigningIdentity().GetIdentifier().Mspid)
 
 	// 조직 단위 정보 출력
 	// ous := identity.GetOrganizationalUnits()

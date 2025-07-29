@@ -55,8 +55,8 @@ type MSPPrincipal struct {
 
 type MSPPrincipal_Classification int32
 
-func (msp *FabricMSP) GetIdentifier() *IdentityIdentifier {
-	return msp.SigningIdentity.GetIdentifier()
+func (msp *FabricMSP) GetSigningIdentity() SigningIdentity {
+	return msp.SigningIdentity
 }
 
 func NewFabricMSP() *FabricMSP {

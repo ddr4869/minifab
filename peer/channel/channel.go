@@ -39,8 +39,8 @@ func Cmd() *cobra.Command {
 
 	// peer 로그 출력
 	logger.Infof("✅ Successfully created peer: %v", peer)
-	logger.Infof("✅ MSP ID: %s", peer.PeerConfig.Msp.GetIdentifier().Mspid)
-	logger.Infof("✅ MSP ID: %s", peer.PeerConfig.Msp.GetIdentifier().Id)
+	logger.Infof("✅ MSP ID: %s", peer.PeerConfig.Msp.GetSigningIdentity().GetIdentifier().Mspid)
+	logger.Infof("✅ MSP ID: %s", peer.PeerConfig.Msp.GetSigningIdentity().GetIdentifier().Id)
 
 	channelCmd.AddCommand(getChannelCreateCmd(peer))
 	channelCmd.AddCommand(getChannelJoinCmd(peer))

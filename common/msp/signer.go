@@ -2,6 +2,7 @@ package msp
 
 import (
 	"crypto"
+	"crypto/x509"
 	"io"
 
 	"github.com/pkg/errors"
@@ -12,14 +13,6 @@ type Signer struct {
 	PrivateKey crypto.PrivateKey
 	PublicKey  crypto.PublicKey
 }
-
-// func NewSigner(identity Identity, privateKey crypto.PrivateKey) *Signer {
-// 	return &Signer{
-// 		Identity:   identity,
-// 		PrivateKey: privateKey,
-// 		PublicKey:  identity.pk
-// 	}
-// }
 
 func NewSigner(identity *identity, privateKey crypto.PrivateKey) (*Signer, error) {
 
@@ -56,6 +49,10 @@ func (s *Signer) Sign(rand io.Reader, digest []byte, opts crypto.SignerOpts) ([]
 
 func (s *Signer) GetIdentifier() *IdentityIdentifier {
 	return s.Identity.GetIdentifier()
+}
+
+func (s *Signer) GetCertificate() *x509.Certificate {
+	return s.Identity.GetCertificate()
 }
 
 func (s *Signer) Validate() error {

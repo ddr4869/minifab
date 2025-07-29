@@ -286,8 +286,8 @@ func (x *BlockResponse) GetBlock() *common.Block {
 type ChannelRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ChannelName   string                 `protobuf:"bytes,1,opt,name=channel_name,json=channelName,proto3" json:"channel_name,omitempty"`
-	ConfigtxPath  string                 `protobuf:"bytes,2,opt,name=configtx_path,json=configtxPath,proto3" json:"configtx_path,omitempty"` // configtx.yaml 파일 경로
-	Profile       string                 `protobuf:"bytes,3,opt,name=profile,proto3" json:"profile,omitempty"`                               // 프로파일 이름
+	ConfigtxPath  string                 `protobuf:"bytes,2,opt,name=configtx_path,json=configtxPath,proto3" json:"configtx_path,omitempty"`
+	Profile       string                 `protobuf:"bytes,3,opt,name=profile,proto3" json:"profile,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

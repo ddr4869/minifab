@@ -40,9 +40,8 @@ func (id *identity) GetIdentifier() *IdentityIdentifier {
 	return id.id
 }
 
-// GetMSPIdentifier MSP 식별자 반환
-func (id *identity) GetMSPIdentifier() string {
-	return id.id.Mspid
+func (id *identity) GetCertificate() *x509.Certificate {
+	return id.cert
 }
 
 // Validate Identity 검증
@@ -96,7 +95,7 @@ func (id *identity) Serialize() ([]byte, error) {
 
 	// 실제 구현에서는 protobuf를 사용하여 직렬화
 	serialized := &SerializedIdentity{
-		Mspid:   id.GetMSPIdentifier(),
+		Mspid:   id.GetIdentifier().Id,
 		IdBytes: id.cert.Raw,
 	}
 

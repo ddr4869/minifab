@@ -22,7 +22,7 @@ func NewSimpleChannelMSP() *SimpleChannelMSP {
 }
 
 func (c *SimpleChannelMSP) AddMSP(msp MSP) error {
-	id := msp.GetIdentifier().Mspid
+	id := msp.GetSigningIdentity().GetIdentifier().Mspid
 	if _, exists := c.msps[id]; exists {
 		return fmt.Errorf("MSP %s already exists in channel", id)
 	}
