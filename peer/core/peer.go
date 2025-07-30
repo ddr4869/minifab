@@ -7,12 +7,15 @@ import (
 )
 
 type Peer struct {
-	// channelManager peer.ChannelManager
-	// transactions   []*types.Transaction
-	// mutex          sync.RWMutex
-	// chaincodePath  string
-	PeerConfig    *PeerConfig
+	PeerID        string
+	Msp           msp.MSP
+	MspID         string
 	OrdererClient *common.OrdererClient
+}
+
+type PeerConfig struct {
+	PeerID string
+	Msp    msp.MSP
 }
 
 func NewPeer(peerId, mspId, mspPath, ordererAddress string) (*Peer, error) {
@@ -46,10 +49,9 @@ func NewPeer(peerId, mspId, mspPath, ordererAddress string) (*Peer, error) {
 	}
 
 	return &Peer{
-		PeerConfig: &PeerConfig{
-			PeerID: peerId,
-			Msp:    fabricMSP,
-		},
+		PeerID:        peerId,
+		Msp:           fabricMSP,
+		MspID:         mspId,
 		OrdererClient: ordererClient,
 	}, nil
 }

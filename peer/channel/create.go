@@ -9,6 +9,7 @@ import (
 
 	"github.com/ddr4869/minifab/common/blockutil"
 	"github.com/ddr4869/minifab/common/configtx"
+
 	"github.com/ddr4869/minifab/common/logger"
 	"github.com/ddr4869/minifab/peer/core"
 	pb_common "github.com/ddr4869/minifab/proto/common"
@@ -91,7 +92,7 @@ func CreateChannel(peer *core.Peer, channelName, profileName string) error {
 		return errors.Wrapf(err, "failed to create channel")
 	}
 
-	sig, err := peer.PeerConfig.Msp.GetSigningIdentity().Sign(rand.Reader, payload.Data, nil)
+	sig, err := peer.Msp.GetSigningIdentity().Sign(rand.Reader, payload.Data, nil)
 	if err != nil {
 		return errors.Wrapf(err, "failed to sign payload")
 	}
@@ -120,17 +121,21 @@ func generateAppConfigBlock(peer *core.Peer, channelName, profileName string) (*
 		return nil, errors.Wrap(err, "failed to marshal app config")
 	}
 
-	return blockutil.GenerateConfigBlock(appConfigBytes, channelName, peer.PeerConfig.Msp.GetSigningIdentity())
+	return blockutil.GenerateConfigBlock(appConfigBytes, channelName, peer.Msp.GetSigningIdentity())
 }
 
 func CreateAppConfigFromConfigTx(configTxPath string, profile string) (*configtx.ChannelConfig, error) {
-
-	configTx, err := configtx.ConvertConfigtx(configTxPath)
+	// yaml.Unmarshal로 confitx.yaml로 불러온 후 proto.Marshal로 직렬화 해야함
+	// 직렬화된 데이터를 사용하여 채널 구성 생성
+	// 채널 구성 생성 후 채널 구성 반환
+	// (core - func NewChannelGroup(conf *genesisconfig.Profile) 참고)
+	// 그게 아니면 Orderer 쪽에서 그냥
+	ccfg, err := configtx.ConvertConfigtx(configTxPath)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to convert configtx")
 	}
-	// ConfigTxYAML을 ConfigTx로 변환
-	genesisConfig, err := configTx.GetAppChannelProfile(profile)
+
+	genesisConfig, err := ccfg.GetAppChannelProfile(profile)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to convert configtx to genesis config")
 	}

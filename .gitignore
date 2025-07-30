@@ -33,3 +33,4 @@ go.work.sum
 .kiro
 
 bin/*
+blocks/*

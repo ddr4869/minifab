@@ -3,6 +3,7 @@ package orderer
 import (
 	"context"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"net"
 	"os"
@@ -10,11 +11,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ddr4869/minifab/common/configtx"
 	"github.com/ddr4869/minifab/common/logger"
 	pb_common "github.com/ddr4869/minifab/proto/common"
 	pb_orderer "github.com/ddr4869/minifab/proto/orderer"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/proto"
 )
 
 type OrdererServer struct {
@@ -39,7 +42,57 @@ func (s *OrdererServer) CreateChannel(stream pb_orderer.OrdererService_CreateCha
 		if err != nil {
 			return err
 		}
-		logger.Infof("[Orderer] Received message: %s", msg.Payload.Data)
+		// channelName := msg.Payload.Header.ChannelId
+		if msg.Payload.Header.Type != pb_common.MessageType_MESSAGE_TYPE_CONFIG {
+			return errors.New("invalid message type")
+		}
+		block, _ := pem.Decode(msg.Signature)
+		if block == nil {
+			return errors.Errorf("failed to decode PEM block from directory %s", msg.Signature)
+		}
+		// verify signature - consortiums
+		// msg.Signature
+		//cert.LoadCertFromDir(msg.Payload.Header.Creator, "signcerts")
+		//cert.VerifyRootCA(msg.Payload.Header.Creator, msg.Signature)
+
+		cfgBlock := &pb_common.ConfigBlock{}
+		if err := proto.Unmarshal(msg.Payload.Data, cfgBlock); err != nil {
+			return errors.Wrap(err, "failed to unmarshal block")
+		}
+
+		appConfig := &configtx.ChannelConfig{}
+		for _, tx := range cfgBlock.Block.Data.Transactions {
+			logger.Infof("[Orderer] Received config block: %s", tx)
+			err = json.Unmarshal(tx, appConfig)
+			if err != nil {
+				return errors.Wrap(err, "failed to unmarshal app config")
+			}
+			logger.Infof("[Orderer] Received app config: %s", appConfig)
+		}
+
+		// jsonData, err := json.Marshal(cfgBlock.Block.Data.Transactions[0])
+		// if err != nil {
+		// 	return errors.Wrap(err, "failed to marshal config block")
+		// }
+
+		// logger.Infof("[Orderer] Received config: %s", jsonData)
+
+		// convert cfgBlock.Block.Data.Transactions to configtx.AppChannelProfile
+		// cfg := &pb_common.ChannelConfig{}
+		// if err := proto.Unmarshal(cfgBlock.Block.Data.Transactions[0], cfg); err != nil {
+		// 	return errors.Wrap(err, "failed to unmarshal app channel profile")
+		// }
+
+		// tx := &pb_common.Transaction{}
+		// if err := proto.Unmarshal(cfgBlock.Block.Data.Transactions[0], tx); err != nil {
+		// 	return errors.Wrap(err, "failed to unmarshal transaction")
+		// }
+		// logger.Infof("[Orderer] Received transaction: %s", tx)
+
+		// payload := &pb_common.Payload{}
+		// if err := proto.Unmarshal(msg.Payload.Data, payload); err != nil {
+		// 	return errors.Wrap(err, "failed to unmarshal payload")
+		// }
 
 		// #TODO : phase 1 - check if channel already exists
 		// #TODO : phase 2 - create config block
@@ -54,6 +107,7 @@ func (s *OrdererServer) CreateChannel(stream pb_orderer.OrdererService_CreateCha
 				Number: 1,
 			},
 		})
+
 	}
 
 }

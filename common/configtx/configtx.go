@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/ddr4869/minifab/common/cert"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
 )
@@ -12,6 +13,7 @@ type Organization struct {
 	Name             string       `yaml:"Name"`
 	ID               string       `yaml:"ID"`
 	MSPDir           string       `yaml:"MSPDir"`
+	MSPCaCert        []byte       `yaml:"-"`
 	OrdererEndpoints []string     `yaml:"OrdererEndpoints,omitempty"`
 	AnchorPeers      []AnchorPeer `yaml:"AnchorPeers,omitempty"`
 }
@@ -83,6 +85,14 @@ func (c *ConfigTx) GetSystemChannelInfo(name string) (*SystemChannelInfo, error)
 	if err := yaml.Unmarshal(yamlData, &systemProfile); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal as SystemChannelInfo: %v", err)
 	}
+
+	for i, org := range systemProfile.Consortiums {
+		cert, err := cert.LoadCertFromDir(org.MSPDir, "cacerts")
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to load certificate")
+		}
+		systemProfile.Consortiums[i].MSPCaCert = cert.Raw
+	}
 	return &systemProfile, nil
 }
 
@@ -124,6 +134,14 @@ func ConvertConfigtx(configTxPath string) (*ConfigTx, error) {
 	var configTx ConfigTx
 	if err := yaml.Unmarshal(data, &configTx); err != nil {
 		return nil, errors.Wrap(err, "failed to parse configtx YAML")
+	}
+
+	for i, org := range configTx.Organizations {
+		cert, err := cert.LoadCertFromDir(org.MSPDir, "cacerts")
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to load certificate")
+		}
+		configTx.Organizations[i].MSPCaCert = cert.Raw
 	}
 
 	return &configTx, nil

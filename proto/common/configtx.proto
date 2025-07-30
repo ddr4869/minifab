@@ -1,0 +1,65 @@
+syntax = "proto3";
+
+package common;
+
+option go_package = "github.com/ddr4869/minifab/proto/common";
+
+message ConfigTx {
+    repeated Organization organizations = 1;
+    OrdererConfig orderer = 2;
+    ChannelConfig channel = 3;
+    map<string, bytes> profiles = 4; // YAML 데이터를 bytes로 저장
+}
+
+message Organization {
+    string name = 1;
+    string id = 2;
+    string msp_dir = 3;
+    repeated string orderer_endpoints = 4;
+    repeated AnchorPeer anchor_peers = 5;
+}
+
+message AnchorPeer {
+    string host = 1;
+    int32 port = 2;
+}
+
+message OrdererConfig {
+    string batch_timeout = 1;
+    BatchSize batch_size = 2;
+}
+
+message BatchSize {
+    int32 max_message_count = 1;
+    string absolute_max_bytes = 2;
+    string preferred_max_bytes = 3;
+}
+
+message ChannelConfig {
+    string policies = 1; // interface{} 대신 string으로 처리
+    repeated Organization organizations = 2;
+}
+
+message Consortium {
+    repeated Organization organizations = 1;
+}
+
+message SystemChannelConfig {
+    string batch_timeout = 1;
+    BatchSize batch_size = 2;
+    Organization organization = 3;
+}
+
+message SystemChannelInfo {
+    SystemChannelConfig orderer = 1;
+    repeated Organization consortiums = 2;
+}
+
+message AppChannelProfile {
+    ChannelConfig application = 1;
+}
+
+message Profiles {
+    SystemChannelInfo system_channel = 1;
+    AppChannelProfile app_channel = 2;
+}

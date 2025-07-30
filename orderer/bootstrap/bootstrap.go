@@ -75,12 +75,12 @@ func runBootstrap(cmd *cobra.Command, args []string) {
 // CreateGenesisConfigFromConfigTx configtx.yaml 파일에서 ConfigTx 생성
 func CreateGenesisConfigFromConfigTx(configTxPath string, profile string) (*configtx.SystemChannelInfo, error) {
 
-	configTx, err := configtx.ConvertConfigtx(configTxPath)
+	ccfg, err := configtx.ConvertConfigtx(configTxPath)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to convert configtx")
 	}
 	// ConfigTxYAML을 ConfigTx로 변환
-	genesisConfig, err := configTx.GetSystemChannelInfo(profile)
+	genesisConfig, err := ccfg.GetSystemChannelInfo(profile)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to convert configtx to genesis config")
 	}
@@ -103,7 +103,6 @@ func bootstrapNetwork(genesisConfig *configtx.SystemChannelInfo) error {
 }
 
 func generateGenesisBlock(genesisConfig *configtx.SystemChannelInfo) error {
-	// 설정 트랜잭션 데이터 직렬화
 	configTxData, err := json.Marshal(genesisConfig)
 	if err != nil {
 		return errors.Wrap(err, "failed to marshal genesis config")
@@ -118,7 +117,6 @@ func generateGenesisBlock(genesisConfig *configtx.SystemChannelInfo) error {
 		return errors.Wrap(err, "failed to generate genesis block")
 	}
 
-	// protobuf로 직렬화
 	protoData, err := proto.Marshal(genesisBlock)
 	if err != nil {
 		return errors.Wrap(err, "failed to marshal genesis block")
