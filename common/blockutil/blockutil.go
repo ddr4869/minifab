@@ -31,10 +31,9 @@ func GenerateConfigBlock(config []byte, channelName string, signer msp.SigningId
 	}
 
 	metadata := &pb_common.BlockMetadata{
-		CreatorCertificate: signer.GetCertificate().Raw,
-		CreatorSignature:   signature,
-		ValidationBitmap:   []byte{1},
-		AccumulatedHash:    []byte{},
+		Signature:        signature,
+		ValidationBitmap: []byte{1},
+		AccumulatedHash:  []byte{},
 	}
 
 	block := &pb_common.Block{

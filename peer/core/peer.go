@@ -8,8 +8,11 @@ import (
 )
 
 type Peer struct {
-	PeerConfig    *config.Config
-	Msp           msp.MSP
+	// PeerConfig    *config.Config
+	Peer          *config.PeerCfg
+	Orderer       *config.OrdererCfg
+	Client        *config.ClientCfg
+	Channel       *config.ChannelCfg
 	OrdererClient *common.OrdererClient
 }
 
@@ -23,27 +26,35 @@ func NewPeer(peerId, mspId, mspPath, ordererAddress string) (*Peer, error) {
 		return nil, err
 	}
 	peerConfig.PrintConfig()
-	peerConfig.Peer.MSPID = mspId
-	peerConfig.Peer.MSPPath = mspPath
-	peerConfig.Peer.Address = ordererAddress
+	peerConfig.Client.MSPID = mspId
+	peerConfig.Client.MSPPath = mspPath
+	peerConfig.Orderer.Address = ordererAddress
 
-	fabricMSP, err := msp.LoadMSPFromFiles(mspId, mspPath)
+	peerMSP, err := msp.LoadMSPFromFiles(peerConfig.Peer.MSPID, peerConfig.Peer.MSPPath)
 	if err != nil {
-		logger.Errorf("Failed to create MSP from files: %v", err)
+		logger.Errorf("Failed to load MSP from files: %v", err)
 		return nil, err
 	}
+	peerConfig.Peer.MSP = peerMSP
 
-	logger.Infof("✅ Successfully loaded MSP from %s", mspPath)
+	clientMSP, err := msp.LoadMSPFromFiles(peerConfig.Client.MSPID, peerConfig.Client.MSPPath)
+	if err != nil {
+		logger.Errorf("Failed to load MSP from files: %v", err)
+		return nil, err
+	}
+	peerConfig.Client.MSP = clientMSP
 
-	ordererClient, err := common.NewOrdererClient(ordererAddress)
+	ordererClient, err := common.NewOrdererClient(peerConfig.Orderer.Address)
 	if err != nil {
 		logger.Errorf("Failed to create orderer client: %v", err)
 		return nil, err
 	}
 
 	return &Peer{
-		PeerConfig:    peerConfig,
-		Msp:           fabricMSP,
+		Peer:          peerConfig.Peer,
+		Orderer:       peerConfig.Orderer,
+		Client:        peerConfig.Client,
+		Channel:       peerConfig.Channel,
 		OrdererClient: ordererClient,
 	}, nil
 }

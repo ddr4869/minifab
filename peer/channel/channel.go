@@ -3,7 +3,6 @@ package channel
 import (
 	"log"
 
-	"github.com/ddr4869/minifab/common/logger"
 	"github.com/ddr4869/minifab/peer/core"
 	"github.com/spf13/cobra"
 )
@@ -30,17 +29,12 @@ func Cmd() *cobra.Command {
 	flags.StringVar(&PeerID, "id", "org1peer0", "Peer ID")
 	flags.StringVar(&ChaincodePath, "chaincode", "./chaincode", "Chaincode path")
 	flags.StringVar(&MspID, "mspid", "Org1MSP", "MSP ID for peer")
-	flags.StringVar(&MspPath, "mspdir", "/Users/mac/go/src/github.com/ddr4869/minifab/ca/Org1/ca-client/peer0", "Path to MSP directory with certificates")
+	flags.StringVar(&MspPath, "mspdir", "/Users/mac/go/src/github.com/ddr4869/minifab/ca/Org1/ca-client/admin", "Path to MSP directory with certificates")
 
 	peer, err := core.NewPeer(PeerID, MspID, MspPath, OrdererAddress)
 	if err != nil {
 		log.Fatalf("Failed to create peer: %v", err)
 	}
-
-	// peer 로그 출력
-	logger.Infof("✅ Successfully created peer: %v", peer)
-	logger.Infof("✅ MSP ID: %s", peer.Msp.GetSigningIdentity().GetIdentifier().Mspid)
-	logger.Infof("✅ MSP ID: %s", peer.Msp.GetSigningIdentity().GetIdentifier().Id)
 
 	channelCmd.AddCommand(ChannelCreateCmd(peer))
 	channelCmd.AddCommand(getChannelJoinCmd(peer))

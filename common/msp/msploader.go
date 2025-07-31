@@ -10,7 +10,6 @@ import (
 )
 
 func LoadMSPFromFiles(mspID, mspPath string) (MSP, error) {
-
 	if err := ValidateMSPStructure(mspPath); err != nil {
 		return nil, errors.Wrap(err, "MSP structure validation failed")
 	}

@@ -59,11 +59,10 @@ message Payload {
 
 // Header - 메시지 헤더
 message Header {
-    bytes creator = 1;        // 생성자 인증서
-    bytes nonce = 2;          // 중복 방지용 nonce
-    MessageType type = 3;     // 메시지 타입
-    string channel_id = 4;    // 채널 ID
-    google.protobuf.Timestamp timestamp = 5; // 타임스탬프
+    bytes nonce = 1;          // 중복 방지용 nonce
+    MessageType type = 2;     // 메시지 타입
+    string channel_id = 3;    // 채널 ID
+    google.protobuf.Timestamp timestamp = 4; // 타임스탬프
 }
 
 // Block Header - 블록 헤더
@@ -81,10 +80,9 @@ message BlockData {
 
 // Block Metadata - 블록 검증을 위한 메타데이터
 message BlockMetadata {
-    bytes creator_certificate = 1;        // 블록 생성자 인증서
-    bytes creator_signature = 2;          // 블록 생성자 서명
-    bytes validation_bitmap = 3;          // 트랜잭션 Valid/Invalid 비트맵
-    bytes accumulated_hash = 4;           // fork 확인을 위한 축적된 해시값
+    bytes signature = 1;                  // 블록 생성자 인증서
+    bytes validation_bitmap = 2;          // 트랜잭션 Valid/Invalid 비트맵
+    bytes accumulated_hash = 3;           // fork 확인을 위한 축적된 해시값
 }
 
 // Block - 완전한 블록 구조

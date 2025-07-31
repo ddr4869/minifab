@@ -1,10 +1,7 @@
 package server
 
 import (
-	"context"
 	"os"
-	"os/signal"
-	"syscall"
 
 	"github.com/ddr4869/minifab/common/logger"
 	"github.com/ddr4869/minifab/orderer"
@@ -14,12 +11,12 @@ import (
 )
 
 var (
-	address      string
-	mspID        string
-	mspPath      string
-	genesisFile  string
-	configTxPath string
-	profile      string
+	ordererId   string
+	address     string
+	mspID       string
+	mspPath     string
+	genesisFile string
+	profile     string
 )
 
 // rootCmd는 orderer의 루트 명령어를 나타냅니다
@@ -33,11 +30,11 @@ var RootCmd = &cobra.Command{
 
 func init() {
 	// Add subcommands
+	RootCmd.Flags().StringVar(&ordererId, "ordererId", "orderer0", "Orderer ID")
 	RootCmd.Flags().StringVar(&address, "address", "0.0.0.0:7050", "Orderer server address")
 	RootCmd.Flags().StringVar(&mspID, "mspid", "OrdererMSP", "MSP ID for orderer")
 	RootCmd.Flags().StringVar(&mspPath, "mspdir", "/Users/mac/go/src/github.com/ddr4869/minifab/ca/OrdererOrg/ca-client/orderer0", "Path to MSP directory with certificates")
-	RootCmd.Flags().StringVar(&genesisFile, "genesisFile", "./genesis.json", "Path to genesis block file")
-	RootCmd.Flags().StringVar(&configTxPath, "configtx", "./config/configtx.yaml", "Path to configtx.yaml file")
+	RootCmd.Flags().StringVar(&genesisFile, "genesisFile", "/Users/mac/go/src/github.com/ddr4869/minifab/blocks/genesis.json", "Path to genesis block file")
 	RootCmd.Flags().StringVar(&profile, "profile", "SystemChannel", "Profile name to use for genesis block")
 
 	RootCmd.AddCommand(bootstrap.Cmd())
@@ -52,35 +49,15 @@ func runOrderer(cmd *cobra.Command, args []string) {
 	}
 
 	// Create orderer instance with MSP files
-	o, err := orderer.NewOrderer(mspID, mspPath)
+	node, err := orderer.NewOrderer(ordererId, mspID, mspPath, address, genesisFile)
 	if err != nil {
 		logger.Fatalf("Failed to create orderer: %v", err)
 	}
 
-	// Create gRPC server
-	server := orderer.NewOrdererServer(o)
-
-	// Setup graceful shutdown
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	// Handle shutdown signals
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-
-	go func() {
-		<-sigChan
-		logger.Info("Received shutdown signal, stopping orderer...")
-		cancel()
-	}()
-
-	// Start server with context for graceful shutdown
 	logger.Infof("Starting orderer server on %s with MSP ID: %s", address, mspID)
-	if err := server.StartWithContext(ctx, address); err != nil {
+	if err := node.Start(address); err != nil {
 		logger.Fatalf("Failed to start orderer server: %v", err)
 	}
-
-	logger.Info("Orderer server stopped gracefully")
 }
 
 // validateOrdererParams validates orderer startup parameters

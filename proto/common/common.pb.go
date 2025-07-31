@@ -335,11 +335,10 @@ func (x *Payload) GetData() []byte {
 // Header - 메시지 헤더
 type Header struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Creator       []byte                 `protobuf:"bytes,1,opt,name=creator,proto3" json:"creator,omitempty"`                      // 생성자 인증서
-	Nonce         []byte                 `protobuf:"bytes,2,opt,name=nonce,proto3" json:"nonce,omitempty"`                          // 중복 방지용 nonce
-	Type          MessageType            `protobuf:"varint,3,opt,name=type,proto3,enum=common.MessageType" json:"type,omitempty"`   // 메시지 타입
-	ChannelId     string                 `protobuf:"bytes,4,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"` // 채널 ID
-	Timestamp     *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=timestamp,proto3" json:"timestamp,omitempty"`                  // 타임스탬프
+	Nonce         []byte                 `protobuf:"bytes,1,opt,name=nonce,proto3" json:"nonce,omitempty"`                          // 중복 방지용 nonce
+	Type          MessageType            `protobuf:"varint,2,opt,name=type,proto3,enum=common.MessageType" json:"type,omitempty"`   // 메시지 타입
+	ChannelId     string                 `protobuf:"bytes,3,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"` // 채널 ID
+	Timestamp     *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=timestamp,proto3" json:"timestamp,omitempty"`                  // 타임스탬프
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -372,13 +371,6 @@ func (x *Header) ProtoReflect() protoreflect.Message {
 // Deprecated: Use Header.ProtoReflect.Descriptor instead.
 func (*Header) Descriptor() ([]byte, []int) {
 	return file_proto_common_common_proto_rawDescGZIP(), []int{2}
-}
-
-func (x *Header) GetCreator() []byte {
-	if x != nil {
-		return x.Creator
-	}
-	return nil
 }
 
 func (x *Header) GetNonce() []byte {
@@ -525,13 +517,12 @@ func (x *BlockData) GetTransactions() [][]byte {
 
 // Block Metadata - 블록 검증을 위한 메타데이터
 type BlockMetadata struct {
-	state              protoimpl.MessageState `protogen:"open.v1"`
-	CreatorCertificate []byte                 `protobuf:"bytes,1,opt,name=creator_certificate,json=creatorCertificate,proto3" json:"creator_certificate,omitempty"` // 블록 생성자 인증서
-	CreatorSignature   []byte                 `protobuf:"bytes,2,opt,name=creator_signature,json=creatorSignature,proto3" json:"creator_signature,omitempty"`       // 블록 생성자 서명
-	ValidationBitmap   []byte                 `protobuf:"bytes,3,opt,name=validation_bitmap,json=validationBitmap,proto3" json:"validation_bitmap,omitempty"`       // 트랜잭션 Valid/Invalid 비트맵
-	AccumulatedHash    []byte                 `protobuf:"bytes,4,opt,name=accumulated_hash,json=accumulatedHash,proto3" json:"accumulated_hash,omitempty"`          // fork 확인을 위한 축적된 해시값
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Signature        []byte                 `protobuf:"bytes,1,opt,name=signature,proto3" json:"signature,omitempty"`                                       // 블록 생성자 인증서
+	ValidationBitmap []byte                 `protobuf:"bytes,2,opt,name=validation_bitmap,json=validationBitmap,proto3" json:"validation_bitmap,omitempty"` // 트랜잭션 Valid/Invalid 비트맵
+	AccumulatedHash  []byte                 `protobuf:"bytes,3,opt,name=accumulated_hash,json=accumulatedHash,proto3" json:"accumulated_hash,omitempty"`    // fork 확인을 위한 축적된 해시값
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *BlockMetadata) Reset() {
@@ -564,16 +555,9 @@ func (*BlockMetadata) Descriptor() ([]byte, []int) {
 	return file_proto_common_common_proto_rawDescGZIP(), []int{5}
 }
 
-func (x *BlockMetadata) GetCreatorCertificate() []byte {
+func (x *BlockMetadata) GetSignature() []byte {
 	if x != nil {
-		return x.CreatorCertificate
-	}
-	return nil
-}
-
-func (x *BlockMetadata) GetCreatorSignature() []byte {
-	if x != nil {
-		return x.CreatorSignature
+		return x.Signature
 	}
 	return nil
 }
@@ -833,14 +817,13 @@ const file_proto_common_common_proto_rawDesc = "" +
 	"\tsignature\x18\x02 \x01(\fR\tsignature\"E\n" +
 	"\aPayload\x12&\n" +
 	"\x06header\x18\x01 \x01(\v2\x0e.common.HeaderR\x06header\x12\x12\n" +
-	"\x04data\x18\x02 \x01(\fR\x04data\"\xba\x01\n" +
-	"\x06Header\x12\x18\n" +
-	"\acreator\x18\x01 \x01(\fR\acreator\x12\x14\n" +
-	"\x05nonce\x18\x02 \x01(\fR\x05nonce\x12'\n" +
-	"\x04type\x18\x03 \x01(\x0e2\x13.common.MessageTypeR\x04type\x12\x1d\n" +
+	"\x04data\x18\x02 \x01(\fR\x04data\"\xa0\x01\n" +
+	"\x06Header\x12\x14\n" +
+	"\x05nonce\x18\x01 \x01(\fR\x05nonce\x12'\n" +
+	"\x04type\x18\x02 \x01(\x0e2\x13.common.MessageTypeR\x04type\x12\x1d\n" +
 	"\n" +
-	"channel_id\x18\x04 \x01(\tR\tchannelId\x128\n" +
-	"\ttimestamp\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\ttimestamp\"\xac\x01\n" +
+	"channel_id\x18\x03 \x01(\tR\tchannelId\x128\n" +
+	"\ttimestamp\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\ttimestamp\"\xac\x01\n" +
 	"\vBlockHeader\x12\x16\n" +
 	"\x06number\x18\x01 \x01(\x04R\x06number\x12,\n" +
 	"\x12current_block_hash\x18\x02 \x01(\fR\x10currentBlockHash\x12#\n" +
@@ -848,12 +831,11 @@ const file_proto_common_common_proto_rawDesc = "" +
 	"\vheader_type\x18\x04 \x01(\x0e2\x11.common.BlockTypeR\n" +
 	"headerType\"/\n" +
 	"\tBlockData\x12\"\n" +
-	"\ftransactions\x18\x01 \x03(\fR\ftransactions\"\xc5\x01\n" +
-	"\rBlockMetadata\x12/\n" +
-	"\x13creator_certificate\x18\x01 \x01(\fR\x12creatorCertificate\x12+\n" +
-	"\x11creator_signature\x18\x02 \x01(\fR\x10creatorSignature\x12+\n" +
-	"\x11validation_bitmap\x18\x03 \x01(\fR\x10validationBitmap\x12)\n" +
-	"\x10accumulated_hash\x18\x04 \x01(\fR\x0faccumulatedHash\"\x8e\x01\n" +
+	"\ftransactions\x18\x01 \x03(\fR\ftransactions\"\x85\x01\n" +
+	"\rBlockMetadata\x12\x1c\n" +
+	"\tsignature\x18\x01 \x01(\fR\tsignature\x12+\n" +
+	"\x11validation_bitmap\x18\x02 \x01(\fR\x10validationBitmap\x12)\n" +
+	"\x10accumulated_hash\x18\x03 \x01(\fR\x0faccumulatedHash\"\x8e\x01\n" +
 	"\x05Block\x12+\n" +
 	"\x06header\x18\x01 \x01(\v2\x13.common.BlockHeaderR\x06header\x12%\n" +
 	"\x04data\x18\x02 \x01(\v2\x11.common.BlockDataR\x04data\x121\n" +

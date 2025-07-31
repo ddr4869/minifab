@@ -1,47 +1,85 @@
 package orderer
 
 import (
+	"context"
+	"net"
+	"os"
+	"os/signal"
 	"sync"
+	"syscall"
 
 	"github.com/ddr4869/minifab/common/logger"
 	"github.com/ddr4869/minifab/common/msp"
+	"github.com/ddr4869/minifab/config"
+	pb_orderer "github.com/ddr4869/minifab/proto/orderer"
+	"github.com/pkg/errors"
+	"google.golang.org/grpc"
 )
 
 type Orderer struct {
-	Mutex sync.RWMutex
-	Msp   msp.MSP
-	MspID string
+	Mutex         sync.RWMutex
+	OrdererConfig *config.OrdererCfg
+	pb_orderer.UnimplementedOrdererServiceServer
+	Server *grpc.Server
 }
 
 // NewOrdererWithMSPFiles fabric-ca로 생성된 MSP 파일들을 사용하여 Orderer 생성
-func NewOrderer(mspID string, mspPath string) (*Orderer, error) {
-	// MSP 파일들로부터 MSP, Identity, PrivateKey 로드
+func NewOrderer(ordererId, mspID, mspPath, ordererAddress, genesisPath string) (*Orderer, error) {
+	ordererConfig, err := config.LoadOrdererConfig(ordererId)
+	if err != nil {
+		logger.Errorf("Failed to load orderer config: %v", err)
+		return nil, err
+	}
+
+	ordererConfig.Address = ordererAddress
+	ordererConfig.MSPID = mspID
+	ordererConfig.MSPPath = mspPath
+	ordererConfig.GenesisPath = genesisPath
+
 	fabricMSP, err := msp.LoadMSPFromFiles(mspID, mspPath)
 	if err != nil {
 		logger.Errorf("Failed to create MSP from files: %v", err)
 		return nil, err
 	}
-
-	logger.Infof("✅ Successfully loaded Orderer MSP from %s", mspPath)
-	logger.Info("📋 Orderer Identity Details:")
-	logger.Infof("   - ID: %s", fabricMSP.GetSigningIdentity().GetIdentifier().Id)
-	logger.Infof("   - MSP ID: %s", fabricMSP.GetSigningIdentity().GetIdentifier().Mspid)
+	ordererConfig.MSP = fabricMSP
 
 	return &Orderer{
-		Msp:   fabricMSP,
-		MspID: mspID,
+		OrdererConfig: ordererConfig,
+		Server:        grpc.NewServer(),
 	}, nil
 }
 
-func (o *Orderer) GetMSP() msp.MSP {
-	o.Mutex.RLock()
-	defer o.Mutex.RUnlock()
-	return o.Msp
-}
+func (s *Orderer) Start(address string) error {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-// GetMSPID MSP ID 반환
-func (o *Orderer) GetMSPID() string {
-	o.Mutex.RLock()
-	defer o.Mutex.RUnlock()
-	return o.MspID
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		<-sigChan
+		logger.Info("Received shutdown signal, stopping orderer...")
+		cancel()
+	}()
+
+	lis, err := net.Listen("tcp", address)
+	if err != nil {
+		return errors.Wrap(err, "failed to listen")
+	}
+
+	logger.Infof("Orderer server listening on %s", address)
+
+	s.Server = grpc.NewServer()
+	pb_orderer.RegisterOrdererServiceServer(s.Server, s)
+
+	go func() {
+		if err := s.Server.Serve(lis); err != nil {
+			logger.Errorf("Server error: %v", err)
+		}
+	}()
+
+	<-ctx.Done()
+	s.Server.GracefulStop()
+	logger.Info("Orderer server stopped gracefully")
+	return nil
 }

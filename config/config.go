@@ -6,78 +6,101 @@ import (
 	"strings"
 
 	"github.com/ddr4869/minifab/common/logger"
+	"github.com/ddr4869/minifab/common/msp"
 	"github.com/pkg/errors"
 )
 
-type PeerConfig struct {
+type PeerCfg struct {
 	MSPPath     string
 	MSPID       string
+	MSP         msp.MSP
 	Address     string
 	TLSEnabled  bool
 	TLSCertFile string
 }
 
-type OrdererConfig struct {
-	MSPPath string
-	MSPID   string
-	Address string
+type OrdererCfg struct {
+	MSPPath     string
+	MSPID       string
+	MSP         msp.MSP
+	Address     string
+	GenesisPath string
 }
 
-type AdminConfig struct {
+type ClientCfg struct {
 	MSPPath string
 	MSPID   string
+	MSP     msp.MSP
 }
 
-type ChannelConfig struct {
+type ChannelCfg struct {
 	Name    string
 	Profile string
+	// TODO : ChannelMSP
 }
 
 type Config struct {
-	Peer    *PeerConfig
-	Orderer *OrdererConfig
-	Admin   *AdminConfig
-	Channel *ChannelConfig
+	Peer    *PeerCfg
+	Orderer *OrdererCfg
+	Client  *ClientCfg
+	Channel *ChannelCfg
 }
 
 func LoadPeerConfig(peerName string) (*Config, error) {
 
-	if err := loadEnvFile(); err != nil {
-		return nil, errors.Wrap(err, "failed to load .env file")
+	err := LoadEnvFile()
+	if err != nil {
+		logger.Errorf("Failed to load env file: %v", err)
+		return nil, err
 	}
-
-	// peer 이름에서 조직과 peer 번호 추출 (예: org1peer0 -> org1, peer0)
 	org, peer := parsePeerName(peerName)
-	logger.Debugf("org: %s", org)
-	logger.Debugf("peer: %s", peer)
+	logger.Debugf("org, peer: %s, %s", org, peer)
 
-	// 환경변수 prefix 생성 (예: ORG1_PEER0_)
-	envPrefix := strings.ToUpper(org) + "_" + strings.ToUpper(peer) + "_"
+	orgPrefix := strings.ToUpper(org) + "_"
+	peerPrefix := strings.ToUpper(peer) + "_"
+	envPrefix := orgPrefix + peerPrefix
 
 	config := &Config{
-		Peer: &PeerConfig{
-			MSPPath:     getEnvOrDefault(envPrefix+"MSP_PATH", "/Users/mac/go/src/github.com/ddr4869/minifab/ca/Org1/ca-client/peer0/msp"),
+		Peer: &PeerCfg{
+			MSPPath:     getEnvOrDefault(envPrefix+"MSP_PATH", "/Users/mac/go/src/github.com/ddr4869/minifab/ca/Org1/ca-client/peer0"),
 			MSPID:       getEnvOrDefault(envPrefix+"MSPID", "Org1MSP"),
 			Address:     getEnvOrDefault(envPrefix+"ADDRESS", "127.0.0.1:7051"),
 			TLSEnabled:  getEnvBoolOrDefault("TLS_ENABLED", false),
-			TLSCertFile: getEnvOrDefault("TLS_ROOTCERT_FILE", "/Users/mac/go/src/github.com/ddr4869/minifab/ca/Org1/ca-client/peer0/msp/cacerts/ca.crt"),
+			TLSCertFile: getEnvOrDefault("TLS_ROOTCERT_FILE", "/Users/mac/go/src/github.com/ddr4869/minifab/ca/Org1/ca-client/peer0/cacerts/ca.crt"),
 		},
-		Orderer: &OrdererConfig{
-			MSPPath: getEnvOrDefault("ORDERER_MSP_PATH", "/Users/mac/go/src/github.com/ddr4869/minifab/ca/OrdererOrg/ca-client/orderer0/msp"),
+		Orderer: &OrdererCfg{
+			MSPPath: getEnvOrDefault("ORDERER_MSP_PATH", "/Users/mac/go/src/github.com/ddr4869/minifab/ca/OrdererOrg/ca-client/orderer0"),
 			MSPID:   getEnvOrDefault("ORDERER_MSPID", "OrdererMSP"),
 			Address: getEnvOrDefault("ORDERER_ADDRESS", "127.0.0.1:7050"),
 		},
-		Admin: &AdminConfig{
-			MSPPath: getEnvOrDefault("ADMIN_MSP_PATH", "/Users/mac/go/src/github.com/ddr4869/minifab/ca/Org1/ca-client/admin/msp"),
-			MSPID:   getEnvOrDefault("ADMIN_MSPID", "Org1MSP"),
+		Client: &ClientCfg{
+			MSPPath: getEnvOrDefault(orgPrefix+"CLIENT_MSP_PATH", "/Users/mac/go/src/github.com/ddr4869/minifab/ca/Org1/ca-client/admin"),
+			MSPID:   getEnvOrDefault(orgPrefix+"CLIENT_MSPID", "Org1MSP"),
 		},
-		Channel: &ChannelConfig{
+		Channel: &ChannelCfg{
 			Name:    getEnvOrDefault("CHANNEL_NAME", "mychannel"),
 			Profile: getEnvOrDefault("PROFILE_NAME", "testchannel0"),
 		},
 	}
 
 	return config, nil
+}
+
+func LoadOrdererConfig(ordererId string) (*OrdererCfg, error) {
+
+	err := LoadEnvFile()
+	if err != nil {
+		logger.Errorf("Failed to load env file: %v", err)
+		return nil, err
+	}
+	ordererCfg := &OrdererCfg{
+		MSPPath:     getEnvOrDefault("ORDERER_MSP_PATH", "/Users/mac/go/src/github.com/ddr4869/minifab/ca/OrdererOrg/ca-client/orderer0"),
+		MSPID:       getEnvOrDefault("ORDERER_MSPID", "OrdererMSP"),
+		Address:     getEnvOrDefault("ORDERER_ADDRESS", "127.0.0.1:7050"),
+		GenesisPath: getEnvOrDefault("GENESIS_PATH", "/Users/mac/go/src/github.com/ddr4869/minifab/blocks/genesis.block"),
+	}
+
+	return ordererCfg, nil
 }
 
 // parsePeerName peer 이름을 조직과 peer로 분리
@@ -113,8 +136,7 @@ func parsePeerName(peerName string) (org, peer string) {
 	return org, peer
 }
 
-// loadEnvFile .env 파일 로드
-func loadEnvFile() error {
+func LoadEnvFile() error {
 	possiblePaths := []string{
 		"config/.env",
 		".env",
@@ -144,21 +166,18 @@ func loadEnvFile() error {
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 
-		// 빈 줄이나 주석 무시
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
 
-		// KEY=VALUE 파싱
 		parts := strings.SplitN(line, "=", 2)
 		if len(parts) != 2 {
-			continue // 잘못된 형식은 무시
+			continue
 		}
 
 		key := strings.TrimSpace(parts[0])
 		value := strings.TrimSpace(parts[1])
 
-		// 따옴표 제거
 		if len(value) >= 2 && (value[0] == '"' && value[len(value)-1] == '"') {
 			value = value[1 : len(value)-1]
 		}
@@ -191,8 +210,8 @@ func (c *Config) GetOrdererMSPPath() string {
 	return c.Orderer.MSPPath
 }
 
-func (c *Config) GetAdminMSPPath() string {
-	return c.Admin.MSPPath
+func (c *Config) GetClientMSPPath() string {
+	return c.Client.MSPPath
 }
 
 func (c *Config) PrintConfig() {
@@ -203,7 +222,7 @@ func (c *Config) PrintConfig() {
 	logger.Infof(" > TLS Enabled: %t", c.Peer.TLSEnabled)
 	logger.Infof(" > Orderer MSP Path: %s", c.Orderer.MSPPath)
 	logger.Infof(" > Orderer Address: %s", c.Orderer.Address)
-	logger.Infof(" > Admin MSP Path: %s", c.Admin.MSPPath)
+	logger.Infof(" > Client MSP Path: %s", c.Client.MSPPath)
 	logger.Infof(" > Channel Name: %s", c.Channel.Name)
 	logger.Infof(" > Profile Name: %s", c.Channel.Profile)
 }

@@ -1,14 +1,8 @@
 package orderer
 
 import (
-	"context"
 	"encoding/json"
 	"encoding/pem"
-	"fmt"
-	"net"
-	"os"
-	"path/filepath"
-	"sync"
 	"time"
 
 	"github.com/ddr4869/minifab/common/configtx"
@@ -16,26 +10,12 @@ import (
 	pb_common "github.com/ddr4869/minifab/proto/common"
 	pb_orderer "github.com/ddr4869/minifab/proto/orderer"
 	"github.com/pkg/errors"
-	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
 )
 
-type OrdererServer struct {
-	pb_orderer.UnimplementedOrdererServiceServer
-	orderer *Orderer
-	server  *grpc.Server
-	mutex   sync.RWMutex
-}
-
-func NewOrdererServer(orderer *Orderer) *OrdererServer {
-	return &OrdererServer{
-		orderer: orderer,
-	}
-}
-
-func (s *OrdererServer) CreateChannel(stream pb_orderer.OrdererService_CreateChannelServer) error {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
+func (s *Orderer) CreateChannel(stream pb_orderer.OrdererService_CreateChannelServer) error {
+	s.Mutex.Lock()
+	defer s.Mutex.Unlock()
 
 	for {
 		msg, err := stream.Recv()
@@ -51,7 +31,11 @@ func (s *OrdererServer) CreateChannel(stream pb_orderer.OrdererService_CreateCha
 			logger.Errorf("failed to decode PEM block from directory %s", msg.Signature)
 			return errors.Errorf("failed to decode PEM block from directory %s", msg.Signature)
 		}
+
 		// verify signature - consortiums
+		// msg.Signature <->
+
+		// cert.VerifyRootCA(msg.Payload.Header.Signature, msg.Signature)
 		// msg.Signature
 		//cert.LoadCertFromDir(msg.Payload.Header.Creator, "signcerts")
 		//cert.VerifyRootCA(msg.Payload.Header.Creator, msg.Signature)
@@ -543,32 +527,6 @@ func (s *OrdererServer) CreateChannel(stream pb_orderer.OrdererService_CreateCha
 // }
 
 // // StartWithContext starts the server with context support for graceful shutdown
-func (s *OrdererServer) StartWithContext(ctx context.Context, address string) error {
-	lis, err := net.Listen("tcp", address)
-	if err != nil {
-		return errors.Wrap(err, "failed to listen")
-	}
-
-	logger.Infof("Orderer server listening on %s", address)
-
-	s.server = grpc.NewServer()
-	pb_orderer.RegisterOrdererServiceServer(s.server, s)
-
-	// Start server in goroutine
-	go func() {
-		if err := s.server.Serve(lis); err != nil {
-			logger.Errorf("Server error: %v", err)
-		}
-	}()
-
-	// Wait for context cancellation
-	<-ctx.Done()
-	logger.Info("Shutting down orderer server...")
-	s.server.GracefulStop()
-	logger.Info("Orderer server shut down complete")
-
-	return nil
-}
 
 // createChannelFromProfile creates channel configuration from configtx.yaml profile
 // func (s *OrdererServer) createChannelFromProfile(configTxPath, profileName, channelName string) (map[string]interface{}, error) {
@@ -609,26 +567,26 @@ func (s *OrdererServer) StartWithContext(ctx context.Context, address string) er
 // }
 
 // saveChannelConfig saves channel configuration to JSON file
-func saveChannelConfig(channelName string, config map[string]interface{}) error {
-	// channels 디렉토리 생성
-	channelsDir := "channels"
-	if err := os.MkdirAll(channelsDir, 0755); err != nil {
-		return errors.Wrap(err, "failed to create channels directory")
-	}
+// func saveChannelConfig(channelName string, config map[string]interface{}) error {
+// 	// channels 디렉토리 생성
+// 	channelsDir := "channels"
+// 	if err := os.MkdirAll(channelsDir, 0755); err != nil {
+// 		return errors.Wrap(err, "failed to create channels directory")
+// 	}
 
-	// JSON 파일로 저장
-	fileName := fmt.Sprintf("%s.json", channelName)
-	filePath := filepath.Join(channelsDir, fileName)
+// 	// JSON 파일로 저장
+// 	fileName := fmt.Sprintf("%s.json", channelName)
+// 	filePath := filepath.Join(channelsDir, fileName)
 
-	data, err := json.MarshalIndent(config, "", "  ")
-	if err != nil {
-		return errors.Wrap(err, "failed to marshal channel config")
-	}
+// 	data, err := json.MarshalIndent(config, "", "  ")
+// 	if err != nil {
+// 		return errors.Wrap(err, "failed to marshal channel config")
+// 	}
 
-	if err := os.WriteFile(filePath, data, 0644); err != nil {
-		return errors.Wrap(err, "failed to write channel config file")
-	}
+// 	if err := os.WriteFile(filePath, data, 0644); err != nil {
+// 		return errors.Wrap(err, "failed to write channel config file")
+// 	}
 
-	logger.Infof("Channel config saved to %s", filePath)
-	return nil
-}
+// 	logger.Infof("Channel config saved to %s", filePath)
+// 	return nil
+// }
