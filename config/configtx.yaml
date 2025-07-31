@@ -2,15 +2,22 @@ Organizations:
   - &OrdererOrg
     Name: OrdererOrg
     ID: OrdererMSP
-    MSPDir: ca/ca-client/orderer0/msp
+    MSPDir: ca/OrdererOrg/ca-client/orderer0
     OrdererEndpoints: [127.0.0.1:7050]
   - &Org1
     Name: Org1
     ID: Org1MSP
-    MSPDir: ca/ca-client/peer0/msp
+    MSPDir: ca/Org1/ca-client/peer0
     AnchorPeers:
       - Host: 127.0.0.1
         Port: 7051
+  - &Org2
+    Name: Org2
+    ID: Org2MSP
+    MSPDir: ca/Org2/ca-client/peer0
+    AnchorPeers:
+      - Host: 127.0.0.1
+        Port: 9051
 
 Orderer: &OrdererConfig
   BatchTimeout: 200ms
@@ -29,8 +36,10 @@ Profiles:
       Organization: *OrdererOrg 
     Consortiums: 
       - *Org1
+      - *Org2
   testchannel0:
     Application:
       << : *ChannelConfig
       Organizations:
         - *Org1
+        - *Org2

@@ -30,7 +30,7 @@ func Cmd() *cobra.Command {
 	flags.StringVar(&PeerID, "id", "peer0", "Peer ID")
 	flags.StringVar(&ChaincodePath, "chaincode", "./chaincode", "Chaincode path")
 	flags.StringVar(&MspID, "mspid", "Org1MSP", "MSP ID for peer")
-	flags.StringVar(&MspPath, "mspdir", "/Users/mac/go/src/github.com/custom-fabric/ca/ca-client/peer0/msp", "Path to MSP directory with certificates")
+	flags.StringVar(&MspPath, "mspdir", "./ca/Org1/ca-client/peer0", "Path to MSP directory with certificates")
 
 	peer, err := core.NewPeer(PeerID, MspID, MspPath, OrdererAddress)
 	if err != nil {
