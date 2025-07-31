@@ -87,7 +87,7 @@ func (c *ConfigTx) GetSystemChannelInfo(name string) (*SystemChannelInfo, error)
 	}
 
 	for i, org := range systemProfile.Consortiums {
-		cert, err := cert.LoadCertFromDir(org.MSPDir, "cacerts")
+		cert, err := cert.LoadCaCertFromDir(org.MSPDir)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to load certificate")
 		}
@@ -137,7 +137,7 @@ func ConvertConfigtx(configTxPath string) (*ConfigTx, error) {
 	}
 
 	for i, org := range configTx.Organizations {
-		cert, err := cert.LoadCertFromDir(org.MSPDir, "cacerts")
+		cert, err := cert.LoadCaCertFromDir(org.MSPDir)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to load certificate")
 		}

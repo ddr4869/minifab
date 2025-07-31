@@ -2,19 +2,19 @@ Organizations:
   - &OrdererOrg
     Name: OrdererOrg
     ID: OrdererMSP
-    MSPDir: ca/OrdererOrg/ca-client/orderer0
+    MSPDir: /Users/mac/go/src/github.com/ddr4869/minifab/ca/OrdererOrg/ca-client/orderer0
     OrdererEndpoints: [127.0.0.1:7050]
   - &Org1
     Name: Org1
     ID: Org1MSP
-    MSPDir: ca/Org1/ca-client/peer0
+    MSPDir: /Users/mac/go/src/github.com/ddr4869/minifab/ca/Org1/ca-client/peer0
     AnchorPeers:
       - Host: 127.0.0.1
         Port: 7051
   - &Org2
     Name: Org2
     ID: Org2MSP
-    MSPDir: ca/Org2/ca-client/peer0
+    MSPDir: /Users/mac/go/src/github.com/ddr4869/minifab/ca/Org2/ca-client/peer0
     AnchorPeers:
       - Host: 127.0.0.1
         Port: 9051

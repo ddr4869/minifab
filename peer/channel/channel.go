@@ -27,10 +27,10 @@ func Cmd() *cobra.Command {
 
 	flags := channelCmd.PersistentFlags()
 	flags.StringVar(&OrdererAddress, "orderer", "localhost:7050", "Orderer server address")
-	flags.StringVar(&PeerID, "id", "peer0", "Peer ID")
+	flags.StringVar(&PeerID, "id", "org1peer0", "Peer ID")
 	flags.StringVar(&ChaincodePath, "chaincode", "./chaincode", "Chaincode path")
 	flags.StringVar(&MspID, "mspid", "Org1MSP", "MSP ID for peer")
-	flags.StringVar(&MspPath, "mspdir", "./ca/Org1/ca-client/peer0", "Path to MSP directory with certificates")
+	flags.StringVar(&MspPath, "mspdir", "/Users/mac/go/src/github.com/ddr4869/minifab/ca/Org1/ca-client/peer0", "Path to MSP directory with certificates")
 
 	peer, err := core.NewPeer(PeerID, MspID, MspPath, OrdererAddress)
 	if err != nil {

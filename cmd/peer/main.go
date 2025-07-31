@@ -21,7 +21,7 @@ func init() {
 	if err := logger.InitializeDevelopment(); err != nil {
 		panic("Failed to initialize logger: " + err.Error())
 	}
-
+	logger.Infof("logger initialized, log level: %s", logger.GetLogger().Level())
 	rootCmd.AddCommand(channel.Cmd())
 
 }

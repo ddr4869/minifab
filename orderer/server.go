@@ -48,6 +48,7 @@ func (s *OrdererServer) CreateChannel(stream pb_orderer.OrdererService_CreateCha
 		}
 		block, _ := pem.Decode(msg.Signature)
 		if block == nil {
+			logger.Errorf("failed to decode PEM block from directory %s", msg.Signature)
 			return errors.Errorf("failed to decode PEM block from directory %s", msg.Signature)
 		}
 		// verify signature - consortiums

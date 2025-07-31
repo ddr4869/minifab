@@ -40,7 +40,7 @@ This command should be run once when setting up a new network.`,
 
 	bootstrapCmd.PersistentFlags().StringVar(&address, "address", "0.0.0.0:7050", "Orderer server address")
 	bootstrapCmd.PersistentFlags().StringVar(&mspID, "mspid", "OrdererMSP", "MSP ID for orderer")
-	bootstrapCmd.PersistentFlags().StringVar(&mspPath, "mspdir", "./ca/OrdererOrg/ca-client/orderer0", "Path to MSP directory with certificates")
+	bootstrapCmd.PersistentFlags().StringVar(&mspPath, "mspdir", "/Users/mac/go/src/github.com/ddr4869/minifab/ca/OrdererOrg/ca-client/orderer0", "Path to MSP directory with certificates")
 
 	// Bootstrap command flags
 	bootstrapCmd.Flags().StringVar(&genesisFile, "genesisFile", "./config/genesis.json", "Path to save/load genesis block file")
