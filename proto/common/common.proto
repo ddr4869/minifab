@@ -47,7 +47,7 @@ enum BlockType {
 
 // Envelope - 노드 간 통신용 봉투
 message Envelope {
-    Payload payload = 1;        // 직렬화된 Payload
+    bytes payload = 1;        // 직렬화된 Payload
     bytes signature = 2;      // 서명
 }
 
@@ -83,6 +83,8 @@ message BlockMetadata {
     bytes signature = 1;                  // 블록 생성자 서명
     bytes validation_bitmap = 2;          // 트랜잭션 Valid/Invalid 비트맵
     bytes accumulated_hash = 3;           // fork 확인을 위한 축적된 해시값
+    bytes createor = 4;                   // 생성자 인증서
+    string creator_msp_id = 5;            // 생성자 MSPID
 }
 
 // Block - 완전한 블록 구조

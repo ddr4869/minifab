@@ -37,6 +37,7 @@ func NewPeer(peerId, mspId, mspPath, ordererAddress string) (*Peer, error) {
 	}
 	peerConfig.Peer.MSP = peerMSP
 
+	logger.Infof("✅ Loading client MSP from files: %s", peerConfig.Client.MSPPath)
 	clientMSP, err := msp.LoadMSPFromFiles(peerConfig.Client.MSPID, peerConfig.Client.MSPPath)
 	if err != nil {
 		logger.Errorf("Failed to load MSP from files: %v", err)

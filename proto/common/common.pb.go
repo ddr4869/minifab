@@ -229,7 +229,7 @@ func (BlockType) EnumDescriptor() ([]byte, []int) {
 // Envelope - 노드 간 통신용 봉투
 type Envelope struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Payload       *Payload               `protobuf:"bytes,1,opt,name=payload,proto3" json:"payload,omitempty"`     // 직렬화된 Payload
+	Payload       []byte                 `protobuf:"bytes,1,opt,name=payload,proto3" json:"payload,omitempty"`     // 직렬화된 Payload
 	Signature     []byte                 `protobuf:"bytes,2,opt,name=signature,proto3" json:"signature,omitempty"` // 서명
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -265,7 +265,7 @@ func (*Envelope) Descriptor() ([]byte, []int) {
 	return file_proto_common_common_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *Envelope) GetPayload() *Payload {
+func (x *Envelope) GetPayload() []byte {
 	if x != nil {
 		return x.Payload
 	}
@@ -518,9 +518,11 @@ func (x *BlockData) GetTransactions() [][]byte {
 // Block Metadata - 블록 검증을 위한 메타데이터
 type BlockMetadata struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
-	Signature        []byte                 `protobuf:"bytes,1,opt,name=signature,proto3" json:"signature,omitempty"`                                       // 블록 생성자 인증서
+	Signature        []byte                 `protobuf:"bytes,1,opt,name=signature,proto3" json:"signature,omitempty"`                                       // 블록 생성자 서명
 	ValidationBitmap []byte                 `protobuf:"bytes,2,opt,name=validation_bitmap,json=validationBitmap,proto3" json:"validation_bitmap,omitempty"` // 트랜잭션 Valid/Invalid 비트맵
 	AccumulatedHash  []byte                 `protobuf:"bytes,3,opt,name=accumulated_hash,json=accumulatedHash,proto3" json:"accumulated_hash,omitempty"`    // fork 확인을 위한 축적된 해시값
+	Createor         []byte                 `protobuf:"bytes,4,opt,name=createor,proto3" json:"createor,omitempty"`                                         // 생성자 인증서
+	CreatorMspId     string                 `protobuf:"bytes,5,opt,name=creator_msp_id,json=creatorMspId,proto3" json:"creator_msp_id,omitempty"`           // 생성자 MSPID
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -574,6 +576,20 @@ func (x *BlockMetadata) GetAccumulatedHash() []byte {
 		return x.AccumulatedHash
 	}
 	return nil
+}
+
+func (x *BlockMetadata) GetCreateor() []byte {
+	if x != nil {
+		return x.Createor
+	}
+	return nil
+}
+
+func (x *BlockMetadata) GetCreatorMspId() string {
+	if x != nil {
+		return x.CreatorMspId
+	}
+	return ""
 }
 
 // Block - 완전한 블록 구조
@@ -811,9 +827,9 @@ var File_proto_common_common_proto protoreflect.FileDescriptor
 
 const file_proto_common_common_proto_rawDesc = "" +
 	"\n" +
-	"\x19proto/common/common.proto\x12\x06common\x1a\x1fgoogle/protobuf/timestamp.proto\"S\n" +
-	"\bEnvelope\x12)\n" +
-	"\apayload\x18\x01 \x01(\v2\x0f.common.PayloadR\apayload\x12\x1c\n" +
+	"\x19proto/common/common.proto\x12\x06common\x1a\x1fgoogle/protobuf/timestamp.proto\"B\n" +
+	"\bEnvelope\x12\x18\n" +
+	"\apayload\x18\x01 \x01(\fR\apayload\x12\x1c\n" +
 	"\tsignature\x18\x02 \x01(\fR\tsignature\"E\n" +
 	"\aPayload\x12&\n" +
 	"\x06header\x18\x01 \x01(\v2\x0e.common.HeaderR\x06header\x12\x12\n" +
@@ -831,11 +847,13 @@ const file_proto_common_common_proto_rawDesc = "" +
 	"\vheader_type\x18\x04 \x01(\x0e2\x11.common.BlockTypeR\n" +
 	"headerType\"/\n" +
 	"\tBlockData\x12\"\n" +
-	"\ftransactions\x18\x01 \x03(\fR\ftransactions\"\x85\x01\n" +
+	"\ftransactions\x18\x01 \x03(\fR\ftransactions\"\xc7\x01\n" +
 	"\rBlockMetadata\x12\x1c\n" +
 	"\tsignature\x18\x01 \x01(\fR\tsignature\x12+\n" +
 	"\x11validation_bitmap\x18\x02 \x01(\fR\x10validationBitmap\x12)\n" +
-	"\x10accumulated_hash\x18\x03 \x01(\fR\x0faccumulatedHash\"\x8e\x01\n" +
+	"\x10accumulated_hash\x18\x03 \x01(\fR\x0faccumulatedHash\x12\x1a\n" +
+	"\bcreateor\x18\x04 \x01(\fR\bcreateor\x12$\n" +
+	"\x0ecreator_msp_id\x18\x05 \x01(\tR\fcreatorMspId\"\x8e\x01\n" +
 	"\x05Block\x12+\n" +
 	"\x06header\x18\x01 \x01(\v2\x13.common.BlockHeaderR\x06header\x12%\n" +
 	"\x04data\x18\x02 \x01(\v2\x11.common.BlockDataR\x04data\x121\n" +
@@ -919,21 +937,20 @@ var file_proto_common_common_proto_goTypes = []any{
 	(*timestamppb.Timestamp)(nil), // 12: google.protobuf.Timestamp
 }
 var file_proto_common_common_proto_depIdxs = []int32{
-	4,  // 0: common.Envelope.payload:type_name -> common.Payload
-	5,  // 1: common.Payload.header:type_name -> common.Header
-	1,  // 2: common.Header.type:type_name -> common.MessageType
-	12, // 3: common.Header.timestamp:type_name -> google.protobuf.Timestamp
-	2,  // 4: common.BlockHeader.header_type:type_name -> common.BlockType
-	6,  // 5: common.Block.header:type_name -> common.BlockHeader
-	7,  // 6: common.Block.data:type_name -> common.BlockData
-	8,  // 7: common.Block.metadata:type_name -> common.BlockMetadata
-	9,  // 8: common.ConfigBlock.block:type_name -> common.Block
-	2,  // 9: common.Transaction.type:type_name -> common.BlockType
-	10, // [10:10] is the sub-list for method output_type
-	10, // [10:10] is the sub-list for method input_type
-	10, // [10:10] is the sub-list for extension type_name
-	10, // [10:10] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	5,  // 0: common.Payload.header:type_name -> common.Header
+	1,  // 1: common.Header.type:type_name -> common.MessageType
+	12, // 2: common.Header.timestamp:type_name -> google.protobuf.Timestamp
+	2,  // 3: common.BlockHeader.header_type:type_name -> common.BlockType
+	6,  // 4: common.Block.header:type_name -> common.BlockHeader
+	7,  // 5: common.Block.data:type_name -> common.BlockData
+	8,  // 6: common.Block.metadata:type_name -> common.BlockMetadata
+	9,  // 7: common.ConfigBlock.block:type_name -> common.Block
+	2,  // 8: common.Transaction.type:type_name -> common.BlockType
+	9,  // [9:9] is the sub-list for method output_type
+	9,  // [9:9] is the sub-list for method input_type
+	9,  // [9:9] is the sub-list for extension type_name
+	9,  // [9:9] is the sub-list for extension extendee
+	0,  // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_proto_common_common_proto_init() }

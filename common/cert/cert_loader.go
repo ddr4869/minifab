@@ -2,6 +2,8 @@ package cert
 
 import (
 	"crypto"
+	"crypto/ecdsa"
+	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
 	"os"
@@ -38,12 +40,23 @@ func LoadCertFromDir(dirPath, certType string) (*x509.Certificate, error) {
 }
 
 func LoadPrivateKeyFromDir(dirPath string) (crypto.PrivateKey, error) {
-	key, err := LoadSingleFileFromDir(dirPath + "/keystore")
+	prk, err := LoadSingleFileFromDir(dirPath + "/keystore")
+	if err != nil {
+		return nil, err
+	}
+	//LoadPrivateKeyFromFile(key)
+
+	key, err := LoadPrivateKeyFromFile(prk)
 	if err != nil {
 		return nil, err
 	}
 
-	return LoadPrivateKeyFromFile(key)
+	switch k := key.(type) {
+	case *ecdsa.PrivateKey, *rsa.PrivateKey:
+		return k, nil
+	default:
+		return nil, errors.New("failed to load private key")
+	}
 }
 
 func LoadPrivateKeyFromFile(key []byte) (crypto.PrivateKey, error) {

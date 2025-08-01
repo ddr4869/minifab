@@ -3,6 +3,7 @@ package channel
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/json"
 	"log"
 	"time"
@@ -65,12 +66,12 @@ func CreateChannel(peer *core.Peer, channelName, profileName string) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to generate app config block")
 	}
-	protoData, err := proto.Marshal(appConfigBlock)
+	appCfgBytes, err := proto.Marshal(appConfigBlock)
 	if err != nil {
 		return errors.Wrap(err, "failed to marshal genesis block")
 	}
 
-	if err := blockutil.SaveBlock(protoData, channelName); err != nil {
+	if err := blockutil.SaveBlock(appCfgBytes, channelName); err != nil {
 		return errors.Wrap(err, "failed to save config block")
 	}
 
@@ -78,18 +79,24 @@ func CreateChannel(peer *core.Peer, channelName, profileName string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	sig, err := peer.Client.MSP.GetSigningIdentity().Sign(rand.Reader, protoData, nil)
-	if err != nil {
-		return errors.Wrapf(err, "failed to sign payload")
-	}
-
 	payload := &pb_common.Payload{
 		Header: &pb_common.Header{
 			Type:      pb_common.MessageType_MESSAGE_TYPE_CONFIG,
 			ChannelId: channelName,
 			Timestamp: timestamppb.Now(),
 		},
-		Data: protoData,
+		Data: appCfgBytes,
+	}
+
+	payloadBytes, err := proto.Marshal(payload)
+	if err != nil {
+		return errors.Wrap(err, "failed to marshal payload")
+	}
+
+	appCfgHash := sha256.Sum256(appCfgBytes)
+	sig, err := peer.Client.MSP.GetSigningIdentity().Sign(rand.Reader, appCfgHash[:], nil)
+	if err != nil {
+		return errors.Wrapf(err, "failed to sign payload")
 	}
 
 	stream, err := peer.OrdererClient.GetClient().CreateChannel(ctx)
@@ -98,7 +105,7 @@ func CreateChannel(peer *core.Peer, channelName, profileName string) error {
 	}
 
 	stream.Send(&pb_common.Envelope{
-		Payload:   payload,
+		Payload:   payloadBytes,
 		Signature: sig,
 	})
 	response, err := stream.Recv()

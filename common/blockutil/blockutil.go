@@ -16,7 +16,9 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func GenerateConfigBlock(config []byte, channelName string, signer msp.SigningIdentity) (*pb_common.ConfigBlock, error) {
+func GenerateConfigBlock(channelConfig []byte, channelName string, signer msp.SigningIdentity) (*pb_common.ConfigBlock, error) {
+
+	cchash := sha256.Sum256(channelConfig)
 	header := &pb_common.BlockHeader{
 		Number:       0,
 		PreviousHash: nil,
@@ -25,16 +27,18 @@ func GenerateConfigBlock(config []byte, channelName string, signer msp.SigningId
 
 	blockData := &pb_common.BlockData{
 		Transactions: [][]byte{
-			config,
+			cchash[:],
 		},
 	}
-	signature, err := signer.Sign(rand.Reader, config, nil)
+	signature, err := signer.Sign(rand.Reader, cchash[:], nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to sign config")
 	}
 
 	metadata := &pb_common.BlockMetadata{
 		Signature:        signature,
+		Createor:         signer.GetCertificate().Raw,
+		CreatorMspId:     signer.GetIdentifier().Mspid,
 		ValidationBitmap: []byte{1},
 		AccumulatedHash:  []byte{},
 	}
@@ -82,7 +86,6 @@ func SaveBlock(blockData []byte, channelName string) error {
 	if err := os.WriteFile(blockFilePath, blockData, 0644); err != nil {
 		return errors.Wrapf(err, "failed to write block file: %s", blockFilePath)
 	}
-
 	logger.Infof("✅ Block %d saved successfully at %s", blockNumber, blockFilePath)
 	return nil
 }
@@ -101,7 +104,7 @@ func LoadBlock(blockPath string) (*pb_common.ConfigBlock, error) {
 	return block, nil
 }
 
-func LoadSystemChannelConfig(blockPath string) (*configtx.SystemChannelConfig, error) {
+func LoadSystemChannelConfig(blockPath string) (*configtx.SystemChannelInfo, error) {
 	configBlock, err := LoadBlock(blockPath)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load block")
@@ -117,12 +120,12 @@ func LoadSystemChannelConfig(blockPath string) (*configtx.SystemChannelConfig, e
 
 	configData := configBlock.Block.Data.Transactions[0]
 
-	var systemChannelConfig configtx.SystemChannelConfig
-	if err := json.Unmarshal(configData, &systemChannelConfig); err != nil {
+	var systemChannelInfo configtx.SystemChannelInfo
+	if err := json.Unmarshal(configData, &systemChannelInfo); err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal system channel config")
 	}
 
-	return &systemChannelConfig, nil
+	return &systemChannelInfo, nil
 }
 
 func CalculateBlockHash(block *pb_common.Block) []byte {

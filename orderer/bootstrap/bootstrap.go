@@ -132,14 +132,10 @@ func generateGenesisBlock(genesisConfig *configtx.SystemChannelInfo) error {
 		return errors.Wrap(err, "failed to marshal genesis block to JSON")
 	}
 
-	if err := os.WriteFile("genesis.json", jsonData, 0644); err != nil {
+	if err := os.WriteFile("genesis.block", jsonData, 0644); err != nil {
 		return errors.Wrap(err, "failed to write genesis JSON file")
 	}
-	logger.Info("Genesis info created and saved at genesis.json successfully")
+	logger.Info("Genesis info created and saved at genesis.block successfully")
 
 	return nil
-}
-
-func loadGenesisBlock(genesisPath string) (*configtx.SystemChannelConfig, error) {
-	return blockutil.LoadSystemChannelConfig(genesisPath)
 }

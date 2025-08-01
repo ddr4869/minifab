@@ -14,7 +14,7 @@ import (
 type MSPConfig struct {
 	MSPID           string
 	SigningIdentity *SigningIdentity
-	RootCerts       []*x509.Certificate
+	RootCerts       *x509.Certificate
 	//Admins                        []*x509.Certificate
 	// RevocationList                []*x509.Certificate
 	// OrganizationalUnitIdentifiers []*FabricOUIdentifier
@@ -26,7 +26,7 @@ type MSPConfig struct {
 type FabricMSP struct {
 	MSPID           string
 	SigningIdentity SigningIdentity
-	RootCerts       []*x509.Certificate
+	RootCerts       *x509.Certificate
 	// Admins          []*identity
 	// Bccsp           BCCSP
 	//CryptoConfig    *FabricCryptoConfig
@@ -57,6 +57,10 @@ type MSPPrincipal_Classification int32
 
 func (msp *FabricMSP) GetSigningIdentity() SigningIdentity {
 	return msp.SigningIdentity
+}
+
+func (msp *FabricMSP) GetRootCertificates() *x509.Certificate {
+	return msp.RootCerts
 }
 
 func NewFabricMSP() *FabricMSP {

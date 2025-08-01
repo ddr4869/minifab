@@ -8,6 +8,7 @@ import (
 type MSP interface {
 	Setup(config *MSPConfig) error
 	GetSigningIdentity() SigningIdentity
+	GetRootCertificates() *x509.Certificate
 	// ValidateIdentity(identity Identity) error
 	// DeserializeIdentity(serializedIdentity []byte) (Identity, error)
 	// IsWellFormed(identity *SerializedIdentity) error

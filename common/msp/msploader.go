@@ -1,11 +1,11 @@
 package msp
 
 import (
-	"crypto/x509"
 	"os"
 	"path/filepath"
 
 	"github.com/ddr4869/minifab/common/cert"
+	"github.com/ddr4869/minifab/common/logger"
 	"github.com/pkg/errors"
 )
 
@@ -27,6 +27,7 @@ func LoadMSP(mspID, mspPath string) (MSP, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load sign cert")
 	}
+	logger.Info("LoadCertFromDir: ", mspPath+"/signcerts")
 
 	identity := NewIdentity(x509Cert, x509Cert.PublicKey, mspID)
 
@@ -59,7 +60,7 @@ func NewMSPWithIdentity(mspID, mspPath string, identity SigningIdentity) (MSP, e
 	mspConfig := &MSPConfig{
 		MSPID:           mspID,
 		SigningIdentity: &identity,
-		RootCerts:       []*x509.Certificate{caCerts},
+		RootCerts:       caCerts,
 	}
 
 	if err := msp.Setup(mspConfig); err != nil {
