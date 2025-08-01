@@ -80,7 +80,7 @@ message BlockData {
 
 // Block Metadata - 블록 검증을 위한 메타데이터
 message BlockMetadata {
-    bytes signature = 1;                  // 블록 생성자 인증서
+    bytes signature = 1;                  // 블록 생성자 서명
     bytes validation_bitmap = 2;          // 트랜잭션 Valid/Invalid 비트맵
     bytes accumulated_hash = 3;           // fork 확인을 위한 축적된 해시값
 }

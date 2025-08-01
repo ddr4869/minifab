@@ -17,7 +17,7 @@ var (
 	address      string
 	mspID        string
 	mspPath      string
-	genesisFile  string
+	genesisPath  string
 	configTxPath string
 	profile      string
 	bootstrap    bool
@@ -43,8 +43,8 @@ This command should be run once when setting up a new network.`,
 	bootstrapCmd.PersistentFlags().StringVar(&mspPath, "mspdir", "/Users/mac/go/src/github.com/ddr4869/minifab/ca/OrdererOrg/ca-client/orderer0", "Path to MSP directory with certificates")
 
 	// Bootstrap command flags
-	bootstrapCmd.Flags().StringVar(&genesisFile, "genesisFile", "./config/genesis.json", "Path to save/load genesis block file")
-	bootstrapCmd.Flags().StringVar(&configTxPath, "configtx", "./config/configtx.yaml", "Path to configtx.yaml file")
+	bootstrapCmd.Flags().StringVar(&genesisPath, "genesisPath", "/Users/mac/go/src/github.com/ddr4869/minifab/blocks/genesis.block", "Path to save/load genesis block file")
+	bootstrapCmd.Flags().StringVar(&configTxPath, "configtx", "/Users/mac/go/src/github.com/ddr4869/minifab/config/configtx.yaml", "Path to configtx.yaml file")
 	bootstrapCmd.Flags().StringVar(&profile, "profile", "SystemChannel", "Profile name to use for genesis block")
 	bootstrapCmd.Flags().BoolVar(&bootstrap, "bootstrap", false, "Bootstrap network with genesis block")
 
@@ -138,4 +138,8 @@ func generateGenesisBlock(genesisConfig *configtx.SystemChannelInfo) error {
 	logger.Info("Genesis info created and saved at genesis.json successfully")
 
 	return nil
+}
+
+func loadGenesisBlock(genesisPath string) (*configtx.SystemChannelConfig, error) {
+	return blockutil.LoadSystemChannelConfig(genesisPath)
 }

@@ -3,14 +3,17 @@ package blockutil
 import (
 	"crypto/rand"
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"os"
 	"time"
 
+	"github.com/ddr4869/minifab/common/configtx"
 	"github.com/ddr4869/minifab/common/logger"
 	"github.com/ddr4869/minifab/common/msp"
 	pb_common "github.com/ddr4869/minifab/proto/common"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 func GenerateConfigBlock(config []byte, channelName string, signer msp.SigningIdentity) (*pb_common.ConfigBlock, error) {
@@ -82,6 +85,44 @@ func SaveBlock(blockData []byte, channelName string) error {
 
 	logger.Infof("✅ Block %d saved successfully at %s", blockNumber, blockFilePath)
 	return nil
+}
+
+func LoadBlock(blockPath string) (*pb_common.ConfigBlock, error) {
+	blockData, err := os.ReadFile(blockPath)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to read block file: %s", blockPath)
+	}
+
+	block := &pb_common.ConfigBlock{}
+	if err := proto.Unmarshal(blockData, block); err != nil {
+		return nil, errors.Wrapf(err, "failed to unmarshal block file: %s", blockPath)
+	}
+
+	return block, nil
+}
+
+func LoadSystemChannelConfig(blockPath string) (*configtx.SystemChannelConfig, error) {
+	configBlock, err := LoadBlock(blockPath)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to load block")
+	}
+
+	if configBlock.Block.Header.HeaderType != pb_common.BlockType_BLOCK_TYPE_CONFIG {
+		return nil, errors.New("block is not a config block")
+	}
+
+	if len(configBlock.Block.Data.Transactions) == 0 {
+		return nil, errors.New("no transactions found in config block")
+	}
+
+	configData := configBlock.Block.Data.Transactions[0]
+
+	var systemChannelConfig configtx.SystemChannelConfig
+	if err := json.Unmarshal(configData, &systemChannelConfig); err != nil {
+		return nil, errors.Wrap(err, "failed to unmarshal system channel config")
+	}
+
+	return &systemChannelConfig, nil
 }
 
 func CalculateBlockHash(block *pb_common.Block) []byte {

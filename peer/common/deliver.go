@@ -11,8 +11,6 @@ import (
 
 type OrdererService interface {
 	CreateChannel(channelName string) error
-	CreateChannelWithProfile(channelName, profileName, configTxPath string) error
-	// SubmitTransaction(tx *types.Transaction) error
 	Close() error
 }
 
