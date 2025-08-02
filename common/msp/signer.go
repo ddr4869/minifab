@@ -15,7 +15,6 @@ type Signer struct {
 }
 
 func NewSigner(identity *identity, privateKey crypto.PrivateKey) (*Signer, error) {
-
 	signer := &Signer{
 		Identity:   *identity,
 		PrivateKey: privateKey,
@@ -34,7 +33,6 @@ func (s *Signer) Public() crypto.PublicKey {
 }
 
 func (s *Signer) Sign(rand io.Reader, digest []byte, opts crypto.SignerOpts) ([]byte, error) {
-
 	signer, ok := s.PrivateKey.(crypto.Signer)
 	if !ok {
 		return nil, errors.New("private key does not implement crypto.Signer")

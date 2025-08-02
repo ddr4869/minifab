@@ -16,7 +16,6 @@ import (
 	pb_common "github.com/ddr4869/minifab/proto/common"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -66,7 +65,7 @@ func CreateChannel(peer *core.Peer, channelName, profileName string) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to generate app config block")
 	}
-	appCfgBytes, err := proto.Marshal(appConfigBlock)
+	appCfgBytes, err := blockutil.MarshalBlockToProto(appConfigBlock)
 	if err != nil {
 		return errors.Wrap(err, "failed to marshal genesis block")
 	}
@@ -75,20 +74,26 @@ func CreateChannel(peer *core.Peer, channelName, profileName string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	payload := &pb_common.Payload{
-		Header: &pb_common.Header{
-			Identity: &pb_common.Identity{
-				Creator: peer.Client.MSP.GetSigningIdentity().GetCertificate().Raw,
-				MspId:   peer.Client.MSP.GetSigningIdentity().GetIdentifier().Mspid,
-			},
-			Type:      pb_common.MessageType_MESSAGE_TYPE_CONFIG,
-			ChannelId: channelName,
-			Timestamp: timestamppb.Now(),
-		},
-		Data: appCfgBytes,
+	// Identity 생성
+	identity := &pb_common.Identity{
+		Creator: peer.Client.MSP.GetSigningIdentity().GetCertificate().Raw,
+		MspId:   peer.Client.MSP.GetSigningIdentity().GetIdentifier().Mspid,
 	}
 
-	payloadBytes, err := proto.Marshal(payload)
+	// Header 생성
+	header, err := blockutil.CreateHeader(identity, pb_common.MessageType_MESSAGE_TYPE_CONFIG, channelName)
+	if err != nil {
+		return errors.Wrap(err, "failed to create header")
+	}
+	header.Timestamp = timestamppb.Now()
+
+	// Payload 생성
+	payload, err := blockutil.CreatePayload(header, appCfgBytes)
+	if err != nil {
+		return errors.Wrap(err, "failed to create payload")
+	}
+
+	payloadBytes, err := blockutil.MarshalPayloadToProto(payload)
 	if err != nil {
 		return errors.Wrap(err, "failed to marshal payload")
 	}
@@ -104,10 +109,12 @@ func CreateChannel(peer *core.Peer, channelName, profileName string) error {
 		return errors.Wrapf(err, "failed to create channel")
 	}
 
-	stream.Send(&pb_common.Envelope{
-		Payload:   payloadBytes,
-		Signature: sig,
-	})
+	envelope, err := blockutil.CreateEnvelope(payload, sig)
+	if err != nil {
+		return errors.Wrap(err, "failed to create envelope")
+	}
+
+	stream.Send(envelope)
 	response, err := stream.Recv()
 	if err != nil {
 		return errors.Wrapf(err, "failed to receive response")

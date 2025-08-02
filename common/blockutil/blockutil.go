@@ -3,7 +3,7 @@ package blockutil
 import (
 	"crypto/rand"
 	"crypto/sha256"
-	"encoding/json"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"time"
@@ -16,16 +16,16 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+// 추후 다른 TYPE의 트랜잭션까지 Handling
 func GenerateConfigBlock(channelConfig []byte, channelName string, signer msp.SigningIdentity) (*pb_common.Block, error) {
 
-	// # 1 peer signature
 	header := &pb_common.BlockHeader{
 		Number:       0,
 		PreviousHash: nil,
 		HeaderType:   pb_common.BlockType_BLOCK_TYPE_CONFIG,
 	}
 
-	// Peer's identity
+	// #1 generate tx, signature - peer identity
 	id := &pb_common.Identity{
 		Creator: signer.GetCertificate().Raw,
 		MspId:   signer.GetIdentifier().Mspid,
@@ -41,45 +41,36 @@ func GenerateConfigBlock(channelConfig []byte, channelName string, signer msp.Si
 	}
 
 	tx := &pb_common.Transaction{
-		TxId:      "tx0",
 		Payload:   channelConfig,
-		Signature: signature,
 		Identity:  id,
 		Timestamp: time.Now().Unix(),
 	}
+	txID, err := CalculateTxHash(tx)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to calculate transaction hash")
+	}
+	tx.TxId = txID
+	tx.Signature = signature
 
 	protoTx, err := proto.Marshal(tx)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to marshal transaction")
 	}
-
 	blockData := &pb_common.BlockData{
 		Transactions: [][]byte{
 			protoTx,
 		},
 	}
 
-	// # 2 Config Block에서의 orderer signature
-	// TODO : 필요한가 ?
-
-	// protoData, err := proto.Marshal(blockData)
-	// if err != nil {
-	// 	return nil, errors.Wrap(err, "failed to marshal block data")
-	// }
-	// cchash := sha256.Sum256(protoData)
-	// signature, err = signer.Sign(rand.Reader, cchash[:], nil)
-	// if err != nil {
-	// 	return nil, errors.Wrap(err, "failed to sign config")
-	// }
-
+	// # 2 blcok metadata
 	metadata := &pb_common.BlockMetadata{
 		// Signature: signature,
 		Identity: &pb_common.Identity{
 			Creator: signer.GetCertificate().Raw,
 			MspId:   signer.GetIdentifier().Mspid,
 		},
-		ValidationBitmap: []byte{1},
-		AccumulatedHash:  []byte{},
+		ValidationBitmap: []byte{1}, // TODO
+		AccumulatedHash:  []byte{},  // TODO
 	}
 
 	block := &pb_common.Block{
@@ -126,12 +117,7 @@ func LoadBlock(blockPath string) (*pb_common.Block, error) {
 		return nil, errors.Wrapf(err, "failed to read block file: %s", blockPath)
 	}
 
-	block := &pb_common.Block{}
-	if err := proto.Unmarshal(blockData, block); err != nil {
-		return nil, errors.Wrapf(err, "failed to unmarshal block file: %s", blockPath)
-	}
-
-	return block, nil
+	return UnmarshalBlockFromProto(blockData)
 }
 
 func LoadSystemChannelConfig(blockPath string) (*configtx.SystemChannelInfo, error) {
@@ -144,29 +130,23 @@ func LoadSystemChannelConfig(blockPath string) (*configtx.SystemChannelInfo, err
 		return nil, errors.New("block is not a config block")
 	}
 
-	if len(Block.Data.Transactions) == 0 {
-		return nil, errors.New("no transactions found in config block")
-	}
-
-	protoTx := &pb_common.Transaction{}
-	if err := proto.Unmarshal(Block.Data.Transactions[0], protoTx); err != nil {
-		return nil, errors.Wrap(err, "failed to unmarshal system channel config")
-	}
-
-	var systemChannelInfo configtx.SystemChannelInfo
-	if err := json.Unmarshal(protoTx.Payload, &systemChannelInfo); err != nil {
-		return nil, errors.Wrap(err, "failed to unmarshal system channel config")
-	}
-
-	return &systemChannelInfo, nil
+	return ExtractSystemChannelConfigFromBlock(Block)
 }
 
+func CalculateTxHash(tx *pb_common.Transaction) (string, error) {
+	txBytes, err := proto.Marshal(tx)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to marshal transaction for hash")
+	}
+	hash := sha256.Sum256(txBytes)
+	return hex.EncodeToString(hash[:]), nil
+}
+
+// TODO : 블록 해시 계산 로직 추가
 func CalculateBlockHash(block *pb_common.Block) []byte {
 	if block == nil {
 		return nil
 	}
-
-	// TODO: 블록 해시 계산 로직 추가
 	hash := sha256.New()
 	return hash.Sum(block.Header.PreviousHash)
 }
