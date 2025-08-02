@@ -79,29 +79,31 @@ func (cs *ChainSupport) CreateChannel(stream pb_orderer.OrdererService_CreateCha
 		}
 		logger.Infof("[Orderer] Signature verified: %v", ok)
 
-		// #2 : verify rootCACerts
-
-		// #3 : verify sender MSPID in consortiums
-
+		// #2 : verify certificate chain & MSPID in consortiums
+		ok, err = cs.VerifyConsortiumMSP(creatorCert, identity.MspId)
+		if err != nil {
+			return errors.Wrap(err, "failed to verify rootCACerts")
+		}
+		if !ok {
+			return errors.New("failed to verify rootCACerts")
+		}
 		// finish verify
+
 		block, err := blockutil.UnmarshalBlockFromProto(Payload.Data)
 		if err != nil {
 			return errors.Wrap(err, "failed to unmarshal block")
 		}
-		// 새로운 함수 사용하여 AppChannelConfig 추출
 		appConfig, err := blockutil.ExtractAppChannelConfigFromBlock(block)
 		if err != nil {
 			return errors.Wrap(err, "failed to extract app channel config from block")
 		}
 		logger.Infof("[Orderer] Received app config: %+v", appConfig)
+		time.Sleep(3 * time.Second)
 
 		// #TODO : phase 1 - check if channel already exists
-		// #TODO : phase 2 - create config block
-		// #TODO : phase 3 - send config block to orderer
-		// #TODO : phase 4 - save config block to file
-		// #TODO : phase 5 - send config block to orderer
-		// #TODO : phase 6 - save config block to file
-		time.Sleep(3 * time.Second)
+		// #TODO : phase 2 - Save config block to the ChainSupport
+		// #TODO : phase 3 - Check Policy
+		// #TODO : phase 4 - Send Block to the Peer
 
 		stream.Send(&pb_common.Block{
 			Header: &pb_common.BlockHeader{
@@ -110,4 +112,35 @@ func (cs *ChainSupport) CreateChannel(stream pb_orderer.OrdererService_CreateCha
 		})
 
 	}
+}
+
+func (cs *ChainSupport) VerifySignature(block *pb_common.Block) error {
+	return nil
+}
+
+func (cs *ChainSupport) VerifyConsortiumMSP(creatorCert *x509.Certificate, mspId string) (bool, error) {
+	scc := cs.GetSystemChannelConfig()
+	if scc == nil {
+		return false, errors.New("system channel config is not loaded")
+	}
+
+	for _, consortium := range scc.Consortiums {
+		if consortium.ID == mspId {
+			logger.Infof("[Orderer] MSPID verified: %s", mspId)
+			consortiumCert, err := x509.ParseCertificate(consortium.MSPCaCert)
+			if err != nil {
+				return false, errors.Wrap(err, "failed to parse certificate")
+			}
+			if err := creatorCert.CheckSignatureFrom(consortiumCert); err != nil {
+				return false, errors.Wrap(err, "failed to verify certificate chain")
+			}
+			logger.Infof("[Orderer] Certificate chain verified")
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (cs *ChainSupport) VerifyMSPID(block *pb_common.Block) error {
+	return nil
 }

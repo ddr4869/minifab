@@ -5,12 +5,12 @@ import (
 
 	"github.com/ddr4869/minifab/common/configtx"
 	"github.com/ddr4869/minifab/common/logger"
+	"github.com/ddr4869/minifab/common/msp"
 	pb_common "github.com/ddr4869/minifab/proto/common"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
 )
 
-// MarshalBlockToProto 블록을 proto로 직렬화
 func MarshalBlockToProto(block *pb_common.Block) ([]byte, error) {
 	blockBytes, err := proto.Marshal(block)
 	if err != nil {
@@ -19,7 +19,6 @@ func MarshalBlockToProto(block *pb_common.Block) ([]byte, error) {
 	return blockBytes, nil
 }
 
-// UnmarshalBlockFromProto proto에서 블록으로 역직렬화
 func UnmarshalBlockFromProto(blockBytes []byte) (*pb_common.Block, error) {
 	block := &pb_common.Block{}
 	if err := proto.Unmarshal(blockBytes, block); err != nil {
@@ -28,7 +27,6 @@ func UnmarshalBlockFromProto(blockBytes []byte) (*pb_common.Block, error) {
 	return block, nil
 }
 
-// MarshalPayloadToProto Payload를 proto로 직렬화
 func MarshalPayloadToProto(payload *pb_common.Payload) ([]byte, error) {
 	payloadBytes, err := proto.Marshal(payload)
 	if err != nil {
@@ -37,7 +35,6 @@ func MarshalPayloadToProto(payload *pb_common.Payload) ([]byte, error) {
 	return payloadBytes, nil
 }
 
-// UnmarshalPayloadFromProto proto에서 Payload로 역직렬화
 func UnmarshalPayloadFromProto(payloadBytes []byte) (*pb_common.Payload, error) {
 	payload := &pb_common.Payload{}
 	if err := proto.Unmarshal(payloadBytes, payload); err != nil {
@@ -46,7 +43,6 @@ func UnmarshalPayloadFromProto(payloadBytes []byte) (*pb_common.Payload, error) 
 	return payload, nil
 }
 
-// MarshalTransactionToProto Transaction을 proto로 직렬화
 func MarshalTransactionToProto(tx *pb_common.Transaction) ([]byte, error) {
 	txBytes, err := proto.Marshal(tx)
 	if err != nil {
@@ -55,7 +51,6 @@ func MarshalTransactionToProto(tx *pb_common.Transaction) ([]byte, error) {
 	return txBytes, nil
 }
 
-// UnmarshalTransactionFromProto proto에서 Transaction으로 역직렬화
 func UnmarshalTransactionFromProto(txBytes []byte) (*pb_common.Transaction, error) {
 	tx := &pb_common.Transaction{}
 	if err := proto.Unmarshal(txBytes, tx); err != nil {
@@ -118,13 +113,16 @@ func CreatePayload(header *pb_common.Header, data []byte) (*pb_common.Payload, e
 	return payload, nil
 }
 
-func CreateHeader(identity *pb_common.Identity, messageType pb_common.MessageType, channelId string) (*pb_common.Header, error) {
+func CreateHeader(signer msp.SigningIdentity, messageType pb_common.MessageType, channelId string) (*pb_common.Header, error) {
+	identity := &pb_common.Identity{
+		Creator: signer.GetCertificate().Raw,
+		MspId:   signer.GetIdentifier().Mspid,
+	}
 	header := &pb_common.Header{
 		Identity:  identity,
 		Type:      messageType,
 		ChannelId: channelId,
 	}
-
 	return header, nil
 }
 

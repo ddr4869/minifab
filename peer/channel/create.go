@@ -45,7 +45,6 @@ func ChannelCreateCmd(peer *core.Peer) *cobra.Command {
 		},
 	}
 
-	// Fabric CLI 스타일 플래그 추가
 	cmd.Flags().StringVarP(&channelName, "channelID", "c", "", "Channel name (required)")
 	cmd.Flags().StringVarP(&profileName, "profile", "p", "testchannel0", "Profile name for channel creation")
 	cmd.MarkFlagRequired("channelID")
@@ -71,55 +70,24 @@ func CreateChannel(peer *core.Peer, channelName, profileName string) error {
 	}
 
 	// #phase 2 - send config block to orderer
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	// Identity 생성
-	identity := &pb_common.Identity{
-		Creator: peer.Client.MSP.GetSigningIdentity().GetCertificate().Raw,
-		MspId:   peer.Client.MSP.GetSigningIdentity().GetIdentifier().Mspid,
-	}
-
-	// Header 생성
-	header, err := blockutil.CreateHeader(identity, pb_common.MessageType_MESSAGE_TYPE_CONFIG, channelName)
-	if err != nil {
-		return errors.Wrap(err, "failed to create header")
-	}
-	header.Timestamp = timestamppb.Now()
-
-	// Payload 생성
-	payload, err := blockutil.CreatePayload(header, appCfgBytes)
+	envelope, err := ProcessConfigBlock(peer, channelName, appCfgBytes)
 	if err != nil {
 		return errors.Wrap(err, "failed to create payload")
 	}
 
-	payloadBytes, err := blockutil.MarshalPayloadToProto(payload)
-	if err != nil {
-		return errors.Wrap(err, "failed to marshal payload")
-	}
-
-	payloadHash := sha256.Sum256(payloadBytes)
-	sig, err := peer.Client.MSP.GetSigningIdentity().Sign(rand.Reader, payloadHash[:], nil)
-	if err != nil {
-		return errors.Wrapf(err, "failed to sign payload")
-	}
-
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 	stream, err := peer.OrdererClient.GetClient().CreateChannel(ctx)
 	if err != nil {
-		return errors.Wrapf(err, "failed to create channel")
+		return errors.Wrapf(err, "failed to stream(create channel)")
 	}
-
-	envelope, err := blockutil.CreateEnvelope(payload, sig)
-	if err != nil {
-		return errors.Wrap(err, "failed to create envelope")
-	}
-
 	stream.Send(envelope)
 	response, err := stream.Recv()
 	if err != nil {
 		return errors.Wrapf(err, "failed to receive response")
 	}
 
+	// #phase 3 - save config block
 	if err := blockutil.SaveBlockFile(appCfgBytes, channelName); err != nil {
 		return errors.Wrap(err, "failed to save config block")
 	}
@@ -140,6 +108,37 @@ func generateAppConfigBlock(peer *core.Peer, channelName, profileName string) (*
 	}
 
 	return blockutil.GenerateConfigBlock(appConfigBytes, channelName, peer.Peer.MSP.GetSigningIdentity())
+}
+
+// config block 생성, 서명 후 envelope 생성
+func ProcessConfigBlock(peer *core.Peer, channelName string, data []byte) (*pb_common.Envelope, error) {
+
+	header, err := blockutil.CreateHeader(peer.Client.MSP.GetSigningIdentity(), pb_common.MessageType_MESSAGE_TYPE_CONFIG, channelName)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create header")
+	}
+	header.Timestamp = timestamppb.Now()
+
+	payload, err := blockutil.CreatePayload(header, data)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create payload")
+	}
+	payloadBytes, err := blockutil.MarshalPayloadToProto(payload)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to marshal payload")
+	}
+
+	payloadHash := sha256.Sum256(payloadBytes)
+	sig, err := peer.Client.MSP.GetSigningIdentity().Sign(rand.Reader, payloadHash[:], nil)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to sign payload")
+	}
+
+	envelope, err := blockutil.CreateEnvelope(payload, sig)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create envelope")
+	}
+	return envelope, nil
 }
 
 func CreateAppConfigFromConfigTx(configTxPath string, profile string) (*configtx.ChannelConfig, error) {

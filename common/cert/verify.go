@@ -29,17 +29,16 @@ func VerifySignature(pubKey crypto.PublicKey, message []byte, signature []byte) 
 }
 
 func VerifyECDSA(pubKey *ecdsa.PublicKey, message []byte, signature []byte) (bool, error) {
-	logger.Infof("verifying ECDSA signature")
+	logger.Debug("verifying ECDSA signature")
 	hash := sha256.Sum256(message)
 
 	ecdsaSignature := &ecdsaSignature{}
 	asn1.Unmarshal(signature, ecdsaSignature)
-	logger.Infof("VerifyECDSA hash: %v", hash)
 	return ecdsa.Verify(pubKey, hash[:], ecdsaSignature.R, ecdsaSignature.S), nil
 }
 
 func VerifyRSA(pubKey *rsa.PublicKey, message []byte, signature []byte) (bool, error) {
-	logger.Infof("verifying RSA signature")
+	logger.Debug("verifying RSA signature")
 	hash := sha256.Sum256(message)
 
 	err := rsa.VerifyPKCS1v15(pubKey, crypto.SHA256, hash[:], signature)
