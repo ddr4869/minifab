@@ -24,8 +24,8 @@ var (
 )
 
 const (
-	systemChannelName = "SYSTEM_CHANNEL"
-	genesisBlockPath  = "./blocks/genesis.block"
+	systemChannelName    = "SYSTEM_CHANNEL"
+	genesisBlockJsonPath = "/Users/mac/go/src/github.com/ddr4869/minifab/blocks/genesis.json"
 )
 
 func Cmd() *cobra.Command {
@@ -122,17 +122,17 @@ func generateGenesisBlock(genesisConfig *configtx.SystemChannelInfo) error {
 		return errors.Wrap(err, "failed to marshal genesis block")
 	}
 
-	if err := os.WriteFile(genesisBlockPath, protoData, 0644); err != nil {
+	if err := os.WriteFile(genesisPath, protoData, 0644); err != nil {
 		return errors.Wrap(err, "failed to write genesis block file")
 	}
-	logger.Info("Genesis block created and saved at %s successfully", genesisBlockPath)
+	logger.Info("Genesis block created and saved at %s successfully", genesisPath)
 
 	jsonData, err := json.MarshalIndent(genesisBlock, "", "  ")
 	if err != nil {
 		return errors.Wrap(err, "failed to marshal genesis block to JSON")
 	}
 
-	if err := os.WriteFile("genesis.block", jsonData, 0644); err != nil {
+	if err := os.WriteFile(genesisBlockJsonPath, jsonData, 0644); err != nil {
 		return errors.Wrap(err, "failed to write genesis JSON file")
 	}
 	logger.Info("Genesis info created and saved at genesis.block successfully")

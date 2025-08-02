@@ -50,15 +50,6 @@ func (cs *ChainSupport) CreateChannel(stream pb_orderer.OrdererService_CreateCha
 		if err != nil {
 			return err
 		}
-
-		// ok, err := cert.VerifySignature(creatorCert.PublicKey, msg.Payload, msg.Signature)
-		// if err != nil {
-		// 	return errors.Wrap(err, "failed to verify signature")
-		// }
-		// if !ok {
-		// 	return errors.New("failed to verify signature")
-		// }
-
 		envelope := &pb_common.Envelope{}
 		if err := proto.Unmarshal(msg.Payload, envelope); err != nil {
 			return errors.Wrap(err, "failed to unmarshal envelope")
@@ -73,19 +64,14 @@ func (cs *ChainSupport) CreateChannel(stream pb_orderer.OrdererService_CreateCha
 			return errors.New("invalid message type")
 		}
 
-		cfgBlock := &pb_common.ConfigBlock{}
-		if err := proto.Unmarshal(Payload.Data, cfgBlock); err != nil {
-			return errors.Wrap(err, "failed to unmarshal block")
-		}
-
-		creatorCert, err := x509.ParseCertificate(cfgBlock.Block.Metadata.Createor)
+		creatorCert, err := x509.ParseCertificate(Payload.Header.Identity.Creator)
 		if err != nil {
 			logger.Error("failed to parse certificate from directory 'cfgBlock.Block.Metadata.Createor")
 			return errors.Errorf("failed to parse certificate from directory 'cfgBlock.Block.Metadata.Createor")
 		}
 
-		// #1 : verify sender signature
-		ok, err := cert.VerifySignature(creatorCert.PublicKey, msg.Payload, cfgBlock.Block.Metadata.Signature)
+		// #1 : verify sender(client) signature
+		ok, err := cert.VerifySignature(creatorCert.PublicKey, msg.Payload, msg.Signature)
 		if err != nil {
 			return errors.Wrap(err, "failed to verify signature")
 		}
@@ -98,8 +84,13 @@ func (cs *ChainSupport) CreateChannel(stream pb_orderer.OrdererService_CreateCha
 
 		// #3 : verify sender MSPID in consortiums
 
+		// finish verify
+		block := &pb_common.Block{}
+		if err := proto.Unmarshal(Payload.Data, block); err != nil {
+			return errors.Wrap(err, "failed to unmarshal block")
+		}
 		appConfig := &configtx.ChannelConfig{}
-		for _, tx := range cfgBlock.Block.Data.Transactions {
+		for _, tx := range block.Data.Transactions {
 			logger.Infof("[Orderer] Received config block: %s", tx)
 			err = json.Unmarshal(tx, appConfig)
 			if err != nil {

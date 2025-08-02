@@ -230,7 +230,7 @@ func (BlockType) EnumDescriptor() ([]byte, []int) {
 type Envelope struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Payload       []byte                 `protobuf:"bytes,1,opt,name=payload,proto3" json:"payload,omitempty"`     // 직렬화된 Payload
-	Signature     []byte                 `protobuf:"bytes,2,opt,name=signature,proto3" json:"signature,omitempty"` // 서명
+	Signature     []byte                 `protobuf:"bytes,2,opt,name=signature,proto3" json:"signature,omitempty"` // payload 서명
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -335,10 +335,11 @@ func (x *Payload) GetData() []byte {
 // Header - 메시지 헤더
 type Header struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Nonce         []byte                 `protobuf:"bytes,1,opt,name=nonce,proto3" json:"nonce,omitempty"`                          // 중복 방지용 nonce
-	Type          MessageType            `protobuf:"varint,2,opt,name=type,proto3,enum=common.MessageType" json:"type,omitempty"`   // 메시지 타입
-	ChannelId     string                 `protobuf:"bytes,3,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"` // 채널 ID
-	Timestamp     *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=timestamp,proto3" json:"timestamp,omitempty"`                  // 타임스탬프
+	Nonce         []byte                 `protobuf:"bytes,1,opt,name=nonce,proto3" json:"nonce,omitempty"` // 중복 방지용 nonce
+	Identity      *Identity              `protobuf:"bytes,2,opt,name=identity,proto3" json:"identity,omitempty"`
+	Type          MessageType            `protobuf:"varint,3,opt,name=type,proto3,enum=common.MessageType" json:"type,omitempty"`   // 메시지 타입
+	ChannelId     string                 `protobuf:"bytes,4,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"` // 채널 ID
+	Timestamp     *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=timestamp,proto3" json:"timestamp,omitempty"`                  // 타임스탬프
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -380,6 +381,13 @@ func (x *Header) GetNonce() []byte {
 	return nil
 }
 
+func (x *Header) GetIdentity() *Identity {
+	if x != nil {
+		return x.Identity
+	}
+	return nil
+}
+
 func (x *Header) GetType() MessageType {
 	if x != nil {
 		return x.Type
@@ -401,6 +409,67 @@ func (x *Header) GetTimestamp() *timestamppb.Timestamp {
 	return nil
 }
 
+// Block - 완전한 블록 구조
+type Block struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Header        *BlockHeader           `protobuf:"bytes,1,opt,name=header,proto3" json:"header,omitempty"`     // Block Header
+	Data          *BlockData             `protobuf:"bytes,2,opt,name=data,proto3" json:"data,omitempty"`         // Block Data
+	Metadata      *BlockMetadata         `protobuf:"bytes,3,opt,name=metadata,proto3" json:"metadata,omitempty"` // Block Metadata
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Block) Reset() {
+	*x = Block{}
+	mi := &file_proto_common_common_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Block) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Block) ProtoMessage() {}
+
+func (x *Block) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_common_common_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Block.ProtoReflect.Descriptor instead.
+func (*Block) Descriptor() ([]byte, []int) {
+	return file_proto_common_common_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *Block) GetHeader() *BlockHeader {
+	if x != nil {
+		return x.Header
+	}
+	return nil
+}
+
+func (x *Block) GetData() *BlockData {
+	if x != nil {
+		return x.Data
+	}
+	return nil
+}
+
+func (x *Block) GetMetadata() *BlockMetadata {
+	if x != nil {
+		return x.Metadata
+	}
+	return nil
+}
+
 // Block Header - 블록 헤더
 type BlockHeader struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
@@ -414,7 +483,7 @@ type BlockHeader struct {
 
 func (x *BlockHeader) Reset() {
 	*x = BlockHeader{}
-	mi := &file_proto_common_common_proto_msgTypes[3]
+	mi := &file_proto_common_common_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -426,7 +495,7 @@ func (x *BlockHeader) String() string {
 func (*BlockHeader) ProtoMessage() {}
 
 func (x *BlockHeader) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_common_common_proto_msgTypes[3]
+	mi := &file_proto_common_common_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -439,7 +508,7 @@ func (x *BlockHeader) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BlockHeader.ProtoReflect.Descriptor instead.
 func (*BlockHeader) Descriptor() ([]byte, []int) {
-	return file_proto_common_common_proto_rawDescGZIP(), []int{3}
+	return file_proto_common_common_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *BlockHeader) GetNumber() uint64 {
@@ -480,7 +549,7 @@ type BlockData struct {
 
 func (x *BlockData) Reset() {
 	*x = BlockData{}
-	mi := &file_proto_common_common_proto_msgTypes[4]
+	mi := &file_proto_common_common_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -492,7 +561,7 @@ func (x *BlockData) String() string {
 func (*BlockData) ProtoMessage() {}
 
 func (x *BlockData) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_common_common_proto_msgTypes[4]
+	mi := &file_proto_common_common_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -505,7 +574,7 @@ func (x *BlockData) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BlockData.ProtoReflect.Descriptor instead.
 func (*BlockData) Descriptor() ([]byte, []int) {
-	return file_proto_common_common_proto_rawDescGZIP(), []int{4}
+	return file_proto_common_common_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *BlockData) GetTransactions() [][]byte {
@@ -518,18 +587,17 @@ func (x *BlockData) GetTransactions() [][]byte {
 // Block Metadata - 블록 검증을 위한 메타데이터
 type BlockMetadata struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
-	Signature        []byte                 `protobuf:"bytes,1,opt,name=signature,proto3" json:"signature,omitempty"`                                       // 블록 생성자 서명
+	Signature        []byte                 `protobuf:"bytes,1,opt,name=signature,proto3" json:"signature,omitempty"`                                       // 서명 - orderer
 	ValidationBitmap []byte                 `protobuf:"bytes,2,opt,name=validation_bitmap,json=validationBitmap,proto3" json:"validation_bitmap,omitempty"` // 트랜잭션 Valid/Invalid 비트맵
 	AccumulatedHash  []byte                 `protobuf:"bytes,3,opt,name=accumulated_hash,json=accumulatedHash,proto3" json:"accumulated_hash,omitempty"`    // fork 확인을 위한 축적된 해시값
-	Createor         []byte                 `protobuf:"bytes,4,opt,name=createor,proto3" json:"createor,omitempty"`                                         // 생성자 인증서
-	CreatorMspId     string                 `protobuf:"bytes,5,opt,name=creator_msp_id,json=creatorMspId,proto3" json:"creator_msp_id,omitempty"`           // 생성자 MSPID
+	Identity         *Identity              `protobuf:"bytes,4,opt,name=identity,proto3" json:"identity,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
 
 func (x *BlockMetadata) Reset() {
 	*x = BlockMetadata{}
-	mi := &file_proto_common_common_proto_msgTypes[5]
+	mi := &file_proto_common_common_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -541,7 +609,7 @@ func (x *BlockMetadata) String() string {
 func (*BlockMetadata) ProtoMessage() {}
 
 func (x *BlockMetadata) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_common_common_proto_msgTypes[5]
+	mi := &file_proto_common_common_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -554,7 +622,7 @@ func (x *BlockMetadata) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BlockMetadata.ProtoReflect.Descriptor instead.
 func (*BlockMetadata) Descriptor() ([]byte, []int) {
-	return file_proto_common_common_proto_rawDescGZIP(), []int{5}
+	return file_proto_common_common_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *BlockMetadata) GetSignature() []byte {
@@ -578,175 +646,28 @@ func (x *BlockMetadata) GetAccumulatedHash() []byte {
 	return nil
 }
 
-func (x *BlockMetadata) GetCreateor() []byte {
+func (x *BlockMetadata) GetIdentity() *Identity {
 	if x != nil {
-		return x.Createor
+		return x.Identity
 	}
 	return nil
-}
-
-func (x *BlockMetadata) GetCreatorMspId() string {
-	if x != nil {
-		return x.CreatorMspId
-	}
-	return ""
-}
-
-// Block - 완전한 블록 구조
-type Block struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Header        *BlockHeader           `protobuf:"bytes,1,opt,name=header,proto3" json:"header,omitempty"`     // Block Header
-	Data          *BlockData             `protobuf:"bytes,2,opt,name=data,proto3" json:"data,omitempty"`         // Block Data
-	Metadata      *BlockMetadata         `protobuf:"bytes,3,opt,name=metadata,proto3" json:"metadata,omitempty"` // Block Metadata
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *Block) Reset() {
-	*x = Block{}
-	mi := &file_proto_common_common_proto_msgTypes[6]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *Block) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*Block) ProtoMessage() {}
-
-func (x *Block) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_common_common_proto_msgTypes[6]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use Block.ProtoReflect.Descriptor instead.
-func (*Block) Descriptor() ([]byte, []int) {
-	return file_proto_common_common_proto_rawDescGZIP(), []int{6}
-}
-
-func (x *Block) GetHeader() *BlockHeader {
-	if x != nil {
-		return x.Header
-	}
-	return nil
-}
-
-func (x *Block) GetData() *BlockData {
-	if x != nil {
-		return x.Data
-	}
-	return nil
-}
-
-func (x *Block) GetMetadata() *BlockMetadata {
-	if x != nil {
-		return x.Metadata
-	}
-	return nil
-}
-
-// Config block
-type ConfigBlock struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Block         *Block                 `protobuf:"bytes,1,opt,name=block,proto3" json:"block,omitempty"`                                 // 블록
-	ChannelId     string                 `protobuf:"bytes,2,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`        // 채널 ID
-	StoredAt      string                 `protobuf:"bytes,3,opt,name=stored_at,json=storedAt,proto3" json:"stored_at,omitempty"`           // 저장 시간
-	IsCommitted   bool                   `protobuf:"varint,4,opt,name=is_committed,json=isCommitted,proto3" json:"is_committed,omitempty"` // 커밋 여부
-	BlockHash     string                 `protobuf:"bytes,5,opt,name=block_hash,json=blockHash,proto3" json:"block_hash,omitempty"`        // 블록 해시
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ConfigBlock) Reset() {
-	*x = ConfigBlock{}
-	mi := &file_proto_common_common_proto_msgTypes[7]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ConfigBlock) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ConfigBlock) ProtoMessage() {}
-
-func (x *ConfigBlock) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_common_common_proto_msgTypes[7]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ConfigBlock.ProtoReflect.Descriptor instead.
-func (*ConfigBlock) Descriptor() ([]byte, []int) {
-	return file_proto_common_common_proto_rawDescGZIP(), []int{7}
-}
-
-func (x *ConfigBlock) GetBlock() *Block {
-	if x != nil {
-		return x.Block
-	}
-	return nil
-}
-
-func (x *ConfigBlock) GetChannelId() string {
-	if x != nil {
-		return x.ChannelId
-	}
-	return ""
-}
-
-func (x *ConfigBlock) GetStoredAt() string {
-	if x != nil {
-		return x.StoredAt
-	}
-	return ""
-}
-
-func (x *ConfigBlock) GetIsCommitted() bool {
-	if x != nil {
-		return x.IsCommitted
-	}
-	return false
-}
-
-func (x *ConfigBlock) GetBlockHash() string {
-	if x != nil {
-		return x.BlockHash
-	}
-	return ""
 }
 
 // Transaction - 트랜잭션 구조
 type Transaction struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`                                           // 트랜잭션 ID
-	Payload       []byte                 `protobuf:"bytes,2,opt,name=payload,proto3" json:"payload,omitempty"`                                 // 트랜잭션 데이터
-	Type          BlockType              `protobuf:"varint,3,opt,name=type,proto3,enum=common.BlockType" json:"type,omitempty"`                // 트랜잭션 타입
-	Identity      []byte                 `protobuf:"bytes,4,opt,name=identity,proto3" json:"identity,omitempty"`                               // 생성자 인증서
-	Signature     []byte                 `protobuf:"bytes,5,opt,name=signature,proto3" json:"signature,omitempty"`                             // 서명
-	CreatorMspId  string                 `protobuf:"bytes,6,opt,name=creator_msp_id,json=creatorMspId,proto3" json:"creator_msp_id,omitempty"` // 생성자 MSP ID
-	Timestamp     int64                  `protobuf:"varint,7,opt,name=timestamp,proto3" json:"timestamp,omitempty"`                            // 트랜잭션 생성 시간
+	TxId          string                 `protobuf:"bytes,1,opt,name=tx_id,json=txId,proto3" json:"tx_id,omitempty"` // 트랜잭션 ID
+	Payload       []byte                 `protobuf:"bytes,2,opt,name=payload,proto3" json:"payload,omitempty"`       // 트랜잭션 데이터
+	Signature     []byte                 `protobuf:"bytes,3,opt,name=signature,proto3" json:"signature,omitempty"`   // 서명 - endorser
+	Identity      *Identity              `protobuf:"bytes,4,opt,name=identity,proto3" json:"identity,omitempty"`
+	Timestamp     int64                  `protobuf:"varint,5,opt,name=timestamp,proto3" json:"timestamp,omitempty"` // 트랜잭션 생성 시간
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Transaction) Reset() {
 	*x = Transaction{}
-	mi := &file_proto_common_common_proto_msgTypes[8]
+	mi := &file_proto_common_common_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -758,7 +679,7 @@ func (x *Transaction) String() string {
 func (*Transaction) ProtoMessage() {}
 
 func (x *Transaction) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_common_common_proto_msgTypes[8]
+	mi := &file_proto_common_common_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -771,12 +692,12 @@ func (x *Transaction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Transaction.ProtoReflect.Descriptor instead.
 func (*Transaction) Descriptor() ([]byte, []int) {
-	return file_proto_common_common_proto_rawDescGZIP(), []int{8}
+	return file_proto_common_common_proto_rawDescGZIP(), []int{7}
 }
 
-func (x *Transaction) GetId() string {
+func (x *Transaction) GetTxId() string {
 	if x != nil {
-		return x.Id
+		return x.TxId
 	}
 	return ""
 }
@@ -788,20 +709,6 @@ func (x *Transaction) GetPayload() []byte {
 	return nil
 }
 
-func (x *Transaction) GetType() BlockType {
-	if x != nil {
-		return x.Type
-	}
-	return BlockType_BLOCK_TYPE_UNSPECIFIED
-}
-
-func (x *Transaction) GetIdentity() []byte {
-	if x != nil {
-		return x.Identity
-	}
-	return nil
-}
-
 func (x *Transaction) GetSignature() []byte {
 	if x != nil {
 		return x.Signature
@@ -809,11 +716,11 @@ func (x *Transaction) GetSignature() []byte {
 	return nil
 }
 
-func (x *Transaction) GetCreatorMspId() string {
+func (x *Transaction) GetIdentity() *Identity {
 	if x != nil {
-		return x.CreatorMspId
+		return x.Identity
 	}
-	return ""
+	return nil
 }
 
 func (x *Transaction) GetTimestamp() int64 {
@@ -821,6 +728,58 @@ func (x *Transaction) GetTimestamp() int64 {
 		return x.Timestamp
 	}
 	return 0
+}
+
+type Identity struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Creator       []byte                 `protobuf:"bytes,1,opt,name=creator,proto3" json:"creator,omitempty"`
+	MspId         string                 `protobuf:"bytes,2,opt,name=msp_id,json=mspId,proto3" json:"msp_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Identity) Reset() {
+	*x = Identity{}
+	mi := &file_proto_common_common_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Identity) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Identity) ProtoMessage() {}
+
+func (x *Identity) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_common_common_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Identity.ProtoReflect.Descriptor instead.
+func (*Identity) Descriptor() ([]byte, []int) {
+	return file_proto_common_common_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *Identity) GetCreator() []byte {
+	if x != nil {
+		return x.Creator
+	}
+	return nil
+}
+
+func (x *Identity) GetMspId() string {
+	if x != nil {
+		return x.MspId
+	}
+	return ""
 }
 
 var File_proto_common_common_proto protoreflect.FileDescriptor
@@ -833,13 +792,18 @@ const file_proto_common_common_proto_rawDesc = "" +
 	"\tsignature\x18\x02 \x01(\fR\tsignature\"E\n" +
 	"\aPayload\x12&\n" +
 	"\x06header\x18\x01 \x01(\v2\x0e.common.HeaderR\x06header\x12\x12\n" +
-	"\x04data\x18\x02 \x01(\fR\x04data\"\xa0\x01\n" +
+	"\x04data\x18\x02 \x01(\fR\x04data\"\xce\x01\n" +
 	"\x06Header\x12\x14\n" +
-	"\x05nonce\x18\x01 \x01(\fR\x05nonce\x12'\n" +
-	"\x04type\x18\x02 \x01(\x0e2\x13.common.MessageTypeR\x04type\x12\x1d\n" +
+	"\x05nonce\x18\x01 \x01(\fR\x05nonce\x12,\n" +
+	"\bidentity\x18\x02 \x01(\v2\x10.common.IdentityR\bidentity\x12'\n" +
+	"\x04type\x18\x03 \x01(\x0e2\x13.common.MessageTypeR\x04type\x12\x1d\n" +
 	"\n" +
-	"channel_id\x18\x03 \x01(\tR\tchannelId\x128\n" +
-	"\ttimestamp\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\ttimestamp\"\xac\x01\n" +
+	"channel_id\x18\x04 \x01(\tR\tchannelId\x128\n" +
+	"\ttimestamp\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\ttimestamp\"\x8e\x01\n" +
+	"\x05Block\x12+\n" +
+	"\x06header\x18\x01 \x01(\v2\x13.common.BlockHeaderR\x06header\x12%\n" +
+	"\x04data\x18\x02 \x01(\v2\x11.common.BlockDataR\x04data\x121\n" +
+	"\bmetadata\x18\x03 \x01(\v2\x15.common.BlockMetadataR\bmetadata\"\xac\x01\n" +
 	"\vBlockHeader\x12\x16\n" +
 	"\x06number\x18\x01 \x01(\x04R\x06number\x12,\n" +
 	"\x12current_block_hash\x18\x02 \x01(\fR\x10currentBlockHash\x12#\n" +
@@ -847,33 +811,21 @@ const file_proto_common_common_proto_rawDesc = "" +
 	"\vheader_type\x18\x04 \x01(\x0e2\x11.common.BlockTypeR\n" +
 	"headerType\"/\n" +
 	"\tBlockData\x12\"\n" +
-	"\ftransactions\x18\x01 \x03(\fR\ftransactions\"\xc7\x01\n" +
+	"\ftransactions\x18\x01 \x03(\fR\ftransactions\"\xb3\x01\n" +
 	"\rBlockMetadata\x12\x1c\n" +
 	"\tsignature\x18\x01 \x01(\fR\tsignature\x12+\n" +
 	"\x11validation_bitmap\x18\x02 \x01(\fR\x10validationBitmap\x12)\n" +
-	"\x10accumulated_hash\x18\x03 \x01(\fR\x0faccumulatedHash\x12\x1a\n" +
-	"\bcreateor\x18\x04 \x01(\fR\bcreateor\x12$\n" +
-	"\x0ecreator_msp_id\x18\x05 \x01(\tR\fcreatorMspId\"\x8e\x01\n" +
-	"\x05Block\x12+\n" +
-	"\x06header\x18\x01 \x01(\v2\x13.common.BlockHeaderR\x06header\x12%\n" +
-	"\x04data\x18\x02 \x01(\v2\x11.common.BlockDataR\x04data\x121\n" +
-	"\bmetadata\x18\x03 \x01(\v2\x15.common.BlockMetadataR\bmetadata\"\xb0\x01\n" +
-	"\vConfigBlock\x12#\n" +
-	"\x05block\x18\x01 \x01(\v2\r.common.BlockR\x05block\x12\x1d\n" +
-	"\n" +
-	"channel_id\x18\x02 \x01(\tR\tchannelId\x12\x1b\n" +
-	"\tstored_at\x18\x03 \x01(\tR\bstoredAt\x12!\n" +
-	"\fis_committed\x18\x04 \x01(\bR\visCommitted\x12\x1d\n" +
-	"\n" +
-	"block_hash\x18\x05 \x01(\tR\tblockHash\"\xdc\x01\n" +
-	"\vTransaction\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
-	"\apayload\x18\x02 \x01(\fR\apayload\x12%\n" +
-	"\x04type\x18\x03 \x01(\x0e2\x11.common.BlockTypeR\x04type\x12\x1a\n" +
-	"\bidentity\x18\x04 \x01(\fR\bidentity\x12\x1c\n" +
-	"\tsignature\x18\x05 \x01(\fR\tsignature\x12$\n" +
-	"\x0ecreator_msp_id\x18\x06 \x01(\tR\fcreatorMspId\x12\x1c\n" +
-	"\ttimestamp\x18\a \x01(\x03R\ttimestamp*\xb9\x03\n" +
+	"\x10accumulated_hash\x18\x03 \x01(\fR\x0faccumulatedHash\x12,\n" +
+	"\bidentity\x18\x04 \x01(\v2\x10.common.IdentityR\bidentity\"\xa6\x01\n" +
+	"\vTransaction\x12\x13\n" +
+	"\x05tx_id\x18\x01 \x01(\tR\x04txId\x12\x18\n" +
+	"\apayload\x18\x02 \x01(\fR\apayload\x12\x1c\n" +
+	"\tsignature\x18\x03 \x01(\fR\tsignature\x12,\n" +
+	"\bidentity\x18\x04 \x01(\v2\x10.common.IdentityR\bidentity\x12\x1c\n" +
+	"\ttimestamp\x18\x05 \x01(\x03R\ttimestamp\";\n" +
+	"\bIdentity\x12\x18\n" +
+	"\acreator\x18\x01 \x01(\fR\acreator\x12\x15\n" +
+	"\x06msp_id\x18\x02 \x01(\tR\x05mspId*\xb9\x03\n" +
 	"\n" +
 	"StatusCode\x12\x06\n" +
 	"\x02OK\x10\x00\x12\x14\n" +
@@ -928,29 +880,30 @@ var file_proto_common_common_proto_goTypes = []any{
 	(*Envelope)(nil),              // 3: common.Envelope
 	(*Payload)(nil),               // 4: common.Payload
 	(*Header)(nil),                // 5: common.Header
-	(*BlockHeader)(nil),           // 6: common.BlockHeader
-	(*BlockData)(nil),             // 7: common.BlockData
-	(*BlockMetadata)(nil),         // 8: common.BlockMetadata
-	(*Block)(nil),                 // 9: common.Block
-	(*ConfigBlock)(nil),           // 10: common.ConfigBlock
-	(*Transaction)(nil),           // 11: common.Transaction
+	(*Block)(nil),                 // 6: common.Block
+	(*BlockHeader)(nil),           // 7: common.BlockHeader
+	(*BlockData)(nil),             // 8: common.BlockData
+	(*BlockMetadata)(nil),         // 9: common.BlockMetadata
+	(*Transaction)(nil),           // 10: common.Transaction
+	(*Identity)(nil),              // 11: common.Identity
 	(*timestamppb.Timestamp)(nil), // 12: google.protobuf.Timestamp
 }
 var file_proto_common_common_proto_depIdxs = []int32{
 	5,  // 0: common.Payload.header:type_name -> common.Header
-	1,  // 1: common.Header.type:type_name -> common.MessageType
-	12, // 2: common.Header.timestamp:type_name -> google.protobuf.Timestamp
-	2,  // 3: common.BlockHeader.header_type:type_name -> common.BlockType
-	6,  // 4: common.Block.header:type_name -> common.BlockHeader
-	7,  // 5: common.Block.data:type_name -> common.BlockData
-	8,  // 6: common.Block.metadata:type_name -> common.BlockMetadata
-	9,  // 7: common.ConfigBlock.block:type_name -> common.Block
-	2,  // 8: common.Transaction.type:type_name -> common.BlockType
-	9,  // [9:9] is the sub-list for method output_type
-	9,  // [9:9] is the sub-list for method input_type
-	9,  // [9:9] is the sub-list for extension type_name
-	9,  // [9:9] is the sub-list for extension extendee
-	0,  // [0:9] is the sub-list for field type_name
+	11, // 1: common.Header.identity:type_name -> common.Identity
+	1,  // 2: common.Header.type:type_name -> common.MessageType
+	12, // 3: common.Header.timestamp:type_name -> google.protobuf.Timestamp
+	7,  // 4: common.Block.header:type_name -> common.BlockHeader
+	8,  // 5: common.Block.data:type_name -> common.BlockData
+	9,  // 6: common.Block.metadata:type_name -> common.BlockMetadata
+	2,  // 7: common.BlockHeader.header_type:type_name -> common.BlockType
+	11, // 8: common.BlockMetadata.identity:type_name -> common.Identity
+	11, // 9: common.Transaction.identity:type_name -> common.Identity
+	10, // [10:10] is the sub-list for method output_type
+	10, // [10:10] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_proto_common_common_proto_init() }

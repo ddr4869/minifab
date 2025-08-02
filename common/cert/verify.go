@@ -16,6 +16,7 @@ type ecdsaSignature struct {
 	R, S *big.Int
 }
 
+// message is not hashed data
 func VerifySignature(pubKey crypto.PublicKey, message []byte, signature []byte) (bool, error) {
 	switch pubKey := pubKey.(type) {
 	case *ecdsa.PublicKey:

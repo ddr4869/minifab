@@ -71,16 +71,16 @@ func CreateChannel(peer *core.Peer, channelName, profileName string) error {
 		return errors.Wrap(err, "failed to marshal genesis block")
 	}
 
-	if err := blockutil.SaveBlock(appCfgBytes, channelName); err != nil {
-		return errors.Wrap(err, "failed to save config block")
-	}
-
 	// #phase 2 - send config block to orderer
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	payload := &pb_common.Payload{
 		Header: &pb_common.Header{
+			Identity: &pb_common.Identity{
+				Creator: peer.Client.MSP.GetSigningIdentity().GetCertificate().Raw,
+				MspId:   peer.Client.MSP.GetSigningIdentity().GetIdentifier().Mspid,
+			},
 			Type:      pb_common.MessageType_MESSAGE_TYPE_CONFIG,
 			ChannelId: channelName,
 			Timestamp: timestamppb.Now(),
@@ -93,8 +93,8 @@ func CreateChannel(peer *core.Peer, channelName, profileName string) error {
 		return errors.Wrap(err, "failed to marshal payload")
 	}
 
-	appCfgHash := sha256.Sum256(appCfgBytes)
-	sig, err := peer.Client.MSP.GetSigningIdentity().Sign(rand.Reader, appCfgHash[:], nil)
+	payloadHash := sha256.Sum256(payloadBytes)
+	sig, err := peer.Client.MSP.GetSigningIdentity().Sign(rand.Reader, payloadHash[:], nil)
 	if err != nil {
 		return errors.Wrapf(err, "failed to sign payload")
 	}
@@ -112,12 +112,16 @@ func CreateChannel(peer *core.Peer, channelName, profileName string) error {
 	if err != nil {
 		return errors.Wrapf(err, "failed to receive response")
 	}
+
+	if err := blockutil.SaveBlockFile(appCfgBytes, channelName); err != nil {
+		return errors.Wrap(err, "failed to save config block")
+	}
 	logger.Info("✅ Broadcast response: ", response)
 
 	return nil
 }
 
-func generateAppConfigBlock(peer *core.Peer, channelName, profileName string) (*pb_common.ConfigBlock, error) {
+func generateAppConfigBlock(peer *core.Peer, channelName, profileName string) (*pb_common.Block, error) {
 	appConfig, err := CreateAppConfigFromConfigTx(cfgFile, profileName)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create app config")
@@ -128,7 +132,7 @@ func generateAppConfigBlock(peer *core.Peer, channelName, profileName string) (*
 		return nil, errors.Wrap(err, "failed to marshal app config")
 	}
 
-	return blockutil.GenerateConfigBlock(appConfigBytes, channelName, peer.Client.MSP.GetSigningIdentity())
+	return blockutil.GenerateConfigBlock(appConfigBytes, channelName, peer.Peer.MSP.GetSigningIdentity())
 }
 
 func CreateAppConfigFromConfigTx(configTxPath string, profile string) (*configtx.ChannelConfig, error) {

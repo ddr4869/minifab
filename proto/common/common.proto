@@ -48,7 +48,7 @@ enum BlockType {
 // Envelope - 노드 간 통신용 봉투
 message Envelope {
     bytes payload = 1;        // 직렬화된 Payload
-    bytes signature = 2;      // 서명
+    bytes signature = 2;      // payload 서명
 }
 
 // Payload - 실제 데이터를 담는 구조
@@ -60,9 +60,18 @@ message Payload {
 // Header - 메시지 헤더
 message Header {
     bytes nonce = 1;          // 중복 방지용 nonce
-    MessageType type = 2;     // 메시지 타입
-    string channel_id = 3;    // 채널 ID
-    google.protobuf.Timestamp timestamp = 4; // 타임스탬프
+    Identity identity = 2;
+    MessageType type = 3;     // 메시지 타입
+    string channel_id = 4;    // 채널 ID
+    google.protobuf.Timestamp timestamp = 5; // 타임스탬프
+}
+
+
+// Block - 완전한 블록 구조
+message Block {
+    BlockHeader header = 1;               // Block Header
+    BlockData data = 2;                   // Block Data
+    BlockMetadata metadata = 3;           // Block Metadata
 }
 
 // Block Header - 블록 헤더
@@ -80,37 +89,23 @@ message BlockData {
 
 // Block Metadata - 블록 검증을 위한 메타데이터
 message BlockMetadata {
-    bytes signature = 1;                  // 블록 생성자 서명
+    bytes signature = 1;                  // 서명 - orderer
     bytes validation_bitmap = 2;          // 트랜잭션 Valid/Invalid 비트맵
     bytes accumulated_hash = 3;           // fork 확인을 위한 축적된 해시값
-    bytes createor = 4;                   // 생성자 인증서
-    string creator_msp_id = 5;            // 생성자 MSPID
-}
-
-// Block - 완전한 블록 구조
-message Block {
-    BlockHeader header = 1;               // Block Header
-    BlockData data = 2;                   // Block Data
-    BlockMetadata metadata = 3;           // Block Metadata
-}
-
-
-// Config block
-message ConfigBlock {
-    Block block = 1;                      // 블록
-    string channel_id = 2;                // 채널 ID
-    string stored_at = 3;                 // 저장 시간
-    bool is_committed = 4;                // 커밋 여부
-    string block_hash = 5;                // 블록 해시
+    Identity identity = 4;
 }
 
 // Transaction - 트랜잭션 구조
 message Transaction {
-    string id = 1;                        // 트랜잭션 ID
+    string tx_id = 1;                        // 트랜잭션 ID
     bytes payload = 2;                    // 트랜잭션 데이터
-    BlockType type = 3;                   // 트랜잭션 타입
-    bytes identity = 4;                   // 생성자 인증서
-    bytes signature = 5;                  // 서명
-    string creator_msp_id = 6;            // 생성자 MSP ID
-    int64 timestamp = 7;                  // 트랜잭션 생성 시간
+    bytes signature = 3;                  // 서명 - endorser
+    Identity identity = 4;
+    int64 timestamp = 5;                  // 트랜잭션 생성 시간
 } 
+
+message Identity {
+    bytes creator = 1;
+    string msp_id = 2;
+}
+
