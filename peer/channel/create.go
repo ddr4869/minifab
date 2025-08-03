@@ -82,16 +82,16 @@ func CreateChannel(peer *core.Peer, channelName, profileName string) error {
 		return errors.Wrapf(err, "failed to stream(create channel)")
 	}
 	stream.Send(envelope)
-	response, err := stream.Recv()
+	block, err := stream.Recv()
 	if err != nil {
 		return errors.Wrapf(err, "failed to receive response")
 	}
 
 	// #phase 3 - save config block
-	if err := blockutil.SaveBlockFile(appCfgBytes, channelName); err != nil {
+	if err := blockutil.SaveBlockFile(block, channelName, peer.Peer.FilesystemPath); err != nil {
 		return errors.Wrap(err, "failed to save config block")
 	}
-	logger.Info("✅ Broadcast response: ", response)
+	logger.Info("✅ Broadcast Success")
 
 	return nil
 }

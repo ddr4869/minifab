@@ -86,9 +86,9 @@ func GenerateConfigBlock(channelConfig []byte, channelName string, signer msp.Si
 // SaveBlock은 블록 데이터를 파일로 저장하는 함수
 // 만약 폴더가 존재하지 않으면 폴더를 생성
 // 현재 해당 채널에 쌓여있는 블록 파일 개수를 카운트하여 그 개수를 블록 번호로 사용
-func SaveBlockFile(blockData []byte, channelName string) error {
+func SaveBlockFile(blockProto *pb_common.Block, channelName string, FilesystemPath string) error {
 	// 먼저 폴더 생성
-	channelDir := fmt.Sprintf("./blocks/%s", channelName)
+	channelDir := fmt.Sprintf("%s/%s", FilesystemPath, channelName)
 	if err := os.MkdirAll(channelDir, 0755); err != nil {
 		return errors.Wrapf(err, "failed to create directory: %s", channelDir)
 	}
@@ -102,7 +102,10 @@ func SaveBlockFile(blockData []byte, channelName string) error {
 		blockNumber++
 	}
 
-	// 블록 파일 저장
+	blockData, err := MarshalBlockToProto(blockProto)
+	if err != nil {
+		return errors.Wrap(err, "failed to marshal block to proto")
+	}
 	blockFilePath := fmt.Sprintf("%s/blockfile%d", channelDir, blockNumber)
 	if err := os.WriteFile(blockFilePath, blockData, 0644); err != nil {
 		return errors.Wrapf(err, "failed to write block file: %s", blockFilePath)

@@ -11,20 +11,22 @@ import (
 )
 
 type PeerCfg struct {
-	MSPPath     string
-	MSPID       string
-	MSP         msp.MSP
-	Address     string
-	TLSEnabled  bool
-	TLSCertFile string
+	MSPPath        string
+	MSPID          string
+	MSP            msp.MSP
+	Address        string
+	FilesystemPath string
+	TLSEnabled     bool
+	TLSCertFile    string
 }
 
 type OrdererCfg struct {
-	MSPPath     string
-	MSPID       string
-	MSP         msp.MSP
-	Address     string
-	GenesisPath string
+	MSPPath        string
+	MSPID          string
+	MSP            msp.MSP
+	Address        string
+	FilesystemPath string
+	GenesisPath    string
 }
 
 type ClientCfg struct {
@@ -62,16 +64,19 @@ func LoadPeerConfig(peerName string) (*Config, error) {
 
 	config := &Config{
 		Peer: &PeerCfg{
-			MSPPath:     getEnvOrDefault(envPrefix+"MSP_PATH", "/Users/mac/go/src/github.com/ddr4869/minifab/ca/Org1/ca-client/peer0"),
-			MSPID:       getEnvOrDefault(envPrefix+"MSPID", "Org1MSP"),
-			Address:     getEnvOrDefault(envPrefix+"ADDRESS", "127.0.0.1:7051"),
-			TLSEnabled:  getEnvBoolOrDefault("TLS_ENABLED", false),
-			TLSCertFile: getEnvOrDefault("TLS_ROOTCERT_FILE", "/Users/mac/go/src/github.com/ddr4869/minifab/ca/Org1/ca-client/peer0/cacerts/ca.crt"),
+			MSPPath:        getEnvOrDefault(envPrefix+"MSP_PATH", "/Users/mac/go/src/github.com/ddr4869/minifab/ca/Org1/ca-client/peer0"),
+			MSPID:          getEnvOrDefault(envPrefix+"MSPID", "Org1MSP"),
+			Address:        getEnvOrDefault(envPrefix+"ADDRESS", "127.0.0.1:7051"),
+			FilesystemPath: getEnvOrDefault(envPrefix+"FILESYSTEM_PATH", "/Users/mac/go/src/github.com/ddr4869/minifab/nodedata/org1peer0"),
+			TLSEnabled:     getEnvBoolOrDefault("TLS_ENABLED", false),
+			TLSCertFile:    getEnvOrDefault("TLS_ROOTCERT_FILE", "/Users/mac/go/src/github.com/ddr4869/minifab/ca/Org1/ca-client/peer0/cacerts/ca.crt"),
 		},
 		Orderer: &OrdererCfg{
-			MSPPath: getEnvOrDefault("ORDERER_MSP_PATH", "/Users/mac/go/src/github.com/ddr4869/minifab/ca/OrdererOrg/ca-client/orderer0"),
-			MSPID:   getEnvOrDefault("ORDERER_MSPID", "OrdererMSP"),
-			Address: getEnvOrDefault("ORDERER_ADDRESS", "127.0.0.1:7050"),
+			MSPPath:        getEnvOrDefault("ORDERER_MSP_PATH", "/Users/mac/go/src/github.com/ddr4869/minifab/ca/OrdererOrg/ca-client/orderer0"),
+			MSPID:          getEnvOrDefault("ORDERER_MSPID", "OrdererMSP"),
+			Address:        getEnvOrDefault("ORDERER_ADDRESS", "127.0.0.1:7050"),
+			FilesystemPath: getEnvOrDefault("ORDERER_FILESYSTEM_PATH", "/Users/mac/go/src/github.com/ddr4869/minifab/nodedata/orderer0"),
+			GenesisPath:    getEnvOrDefault("GENESIS_PATH", "/Users/mac/go/src/github.com/ddr4869/minifab/nodedata/orderer0/genesis.block"),
 		},
 		Client: &ClientCfg{
 			MSPPath: getEnvOrDefault(orgPrefix+"CLIENT_MSP_PATH", "/Users/mac/go/src/github.com/ddr4869/minifab/ca/Org1/ca-client/admin"),
@@ -94,10 +99,11 @@ func LoadOrdererConfig(ordererId string) (*OrdererCfg, error) {
 		return nil, err
 	}
 	ordererCfg := &OrdererCfg{
-		MSPPath:     getEnvOrDefault("ORDERER_MSP_PATH", "/Users/mac/go/src/github.com/ddr4869/minifab/ca/OrdererOrg/ca-client/orderer0"),
-		MSPID:       getEnvOrDefault("ORDERER_MSPID", "OrdererMSP"),
-		Address:     getEnvOrDefault("ORDERER_ADDRESS", "127.0.0.1:7050"),
-		GenesisPath: getEnvOrDefault("GENESIS_PATH", "/Users/mac/go/src/github.com/ddr4869/minifab/blocks/genesis.block"),
+		MSPPath:        getEnvOrDefault("ORDERER_MSP_PATH", "/Users/mac/go/src/github.com/ddr4869/minifab/ca/OrdererOrg/ca-client/orderer0"),
+		MSPID:          getEnvOrDefault("ORDERER_MSPID", "OrdererMSP"),
+		Address:        getEnvOrDefault("ORDERER_ADDRESS", "127.0.0.1:7050"),
+		GenesisPath:    getEnvOrDefault("GENESIS_PATH", "/Users/mac/go/src/github.com/ddr4869/minifab/nodedata/orderer0/genesis.block"),
+		FilesystemPath: getEnvOrDefault("ORDERER_FILESYSTEM_PATH", "/Users/mac/go/src/github.com/ddr4869/minifab/nodedata/orderer0"),
 	}
 
 	return ordererCfg, nil

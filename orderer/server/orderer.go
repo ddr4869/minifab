@@ -46,7 +46,8 @@ func NewOrderer(ordererId, mspID, mspPath, ordererAddress, genesisPath string) (
 	ordererConfig.MSP = fabricMSP
 
 	cs := &channel.ChainSupport{
-		OrdererConfig: ordererConfig,
+		OrdererConfig:     ordererConfig,
+		AppChannelConfigs: make(map[string]*channel.AppChannelConfig),
 	}
 	cs.LoadSystemChannelConfig(genesisPath)
 

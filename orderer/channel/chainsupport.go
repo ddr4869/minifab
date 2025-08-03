@@ -2,6 +2,7 @@ package channel
 
 import (
 	"crypto/x509"
+	"encoding/json"
 	"sync"
 	"time"
 
@@ -15,11 +16,17 @@ import (
 	"github.com/pkg/errors"
 )
 
+// ChannelInfo 채널 정보를 담는 구조체
+type AppChannelConfig struct {
+	CC  *configtx.ChannelConfig
+	SCC *configtx.SystemChannelInfo
+}
+
 // ChainSupport는 Orderer 노드에서 메모리 상 존재하며 채널 정보를 관리한다.
 // 지속성 있는 데이터의 경우 Orderer의 파일 시스템에 저장되어야 한다.
 type ChainSupport struct {
 	SystemChannelInfo *configtx.SystemChannelInfo
-	AppChannelConfigs map[string]*configtx.ChannelConfig
+	AppChannelConfigs map[string]*AppChannelConfig
 
 	OrdererConfig *config.OrdererCfg
 	Mutex         sync.RWMutex
@@ -48,48 +55,15 @@ func (cs *ChainSupport) CreateChannel(stream pb_orderer.OrdererService_CreateCha
 		if err != nil {
 			return err
 		}
-		Payload, err := blockutil.UnmarshalPayloadFromProto(msg.Payload)
+		if err := cs.VerifyChannelCreationEnvelope(msg); err != nil {
+			return err
+		}
+		payload, err := blockutil.UnmarshalPayloadFromProto(msg.Payload)
 		if err != nil {
 			return errors.Wrap(err, "failed to unmarshal payload")
 		}
-		// channelName := msg.Payload.Header.ChannelId
-		if Payload.Header.Type != pb_common.MessageType_MESSAGE_TYPE_CONFIG {
-			return errors.New("invalid message type")
-		}
 
-		// Identity에서 인증서 파싱
-		identity, err := blockutil.GetIdentityFromHeader(Payload.Header)
-		if err != nil {
-			return errors.Wrap(err, "failed to get identity from header")
-		}
-
-		creatorCert, err := x509.ParseCertificate(identity.Creator)
-		if err != nil {
-			logger.Error("failed to parse certificate from identity")
-			return errors.Wrap(err, "failed to parse certificate from identity")
-		}
-
-		// #1 : verify sender(client) signature
-		ok, err := cert.VerifySignature(creatorCert.PublicKey, msg.Payload, msg.Signature)
-		if err != nil {
-			return errors.Wrap(err, "failed to verify signature")
-		}
-		if !ok {
-			return errors.New("failed to verify signature")
-		}
-		logger.Infof("[Orderer] Signature verified: %v", ok)
-
-		// #2 : verify certificate chain & MSPID in consortiums
-		ok, err = cs.VerifyConsortiumMSP(creatorCert, identity.MspId)
-		if err != nil {
-			return errors.Wrap(err, "failed to verify rootCACerts")
-		}
-		if !ok {
-			return errors.New("failed to verify rootCACerts")
-		}
-		// finish verify
-
-		block, err := blockutil.UnmarshalBlockFromProto(Payload.Data)
+		block, err := blockutil.UnmarshalBlockFromProto(payload.Data)
 		if err != nil {
 			return errors.Wrap(err, "failed to unmarshal block")
 		}
@@ -100,21 +74,75 @@ func (cs *ChainSupport) CreateChannel(stream pb_orderer.OrdererService_CreateCha
 		logger.Infof("[Orderer] Received app config: %+v", appConfig)
 		time.Sleep(3 * time.Second)
 
-		// #TODO : phase 1 - check if channel already exists
 		// #TODO : phase 2 - Save config block to the ChainSupport
-		// #TODO : phase 3 - Check Policy
-		// #TODO : phase 4 - Send Block to the Peer
+		cs.AppChannelConfigs[payload.Header.ChannelId] = &AppChannelConfig{CC: appConfig, SCC: cs.SystemChannelInfo}
 
-		stream.Send(&pb_common.Block{
-			Header: &pb_common.BlockHeader{
-				Number: 1,
-			},
-		})
+		appConfigBytes, err := json.Marshal(appConfig)
+		if err != nil {
+			return errors.Wrap(err, "failed to marshal app config")
+		}
+		appBlock, err := blockutil.GenerateConfigBlock(appConfigBytes, payload.Header.ChannelId, cs.OrdererConfig.MSP.GetSigningIdentity())
+		if err != nil {
+			return errors.Wrap(err, "failed to generate config block")
+		}
+		if err := blockutil.SaveBlockFile(appBlock, payload.Header.ChannelId, cs.OrdererConfig.FilesystemPath); err != nil {
+			return errors.Wrap(err, "failed to save config block")
+		}
+		stream.Send(appBlock)
+		time.Sleep(3 * time.Second)
+		logger.Infof("[Orderer] Sent app block to the peer")
+		// #TODO : phase 3 - Send Block to the Peer
+
+		// stream.Send(&pb_common.Block{
+		// 	Header: &pb_common.BlockHeader{
+		// 		Number: 1,
+		// 	},
+		// 	Data: appBlockBytes,
+		// })
 
 	}
 }
 
-func (cs *ChainSupport) VerifySignature(block *pb_common.Block) error {
+func (cs *ChainSupport) VerifyChannelCreationEnvelope(envelope *pb_common.Envelope) error {
+	Payload, err := blockutil.UnmarshalPayloadFromProto(envelope.Payload)
+	if err != nil {
+		return errors.Wrap(err, "failed to unmarshal payload")
+	}
+	if Payload.Header.Type != pb_common.MessageType_MESSAGE_TYPE_CONFIG {
+		return errors.New("invalid message type")
+	}
+	if cs.AppChannelConfigs[Payload.Header.ChannelId] != nil {
+		return errors.New("channel already exists")
+	}
+
+	identity, err := blockutil.GetIdentityFromHeader(Payload.Header)
+	if err != nil {
+		return errors.Wrap(err, "failed to get identity from header")
+	}
+	creatorCert, err := x509.ParseCertificate(identity.Creator)
+	if err != nil {
+		logger.Error("failed to parse certificate from identity")
+		return errors.Wrap(err, "failed to parse certificate from identity")
+	}
+
+	// #1 : verify sender(client) signature
+	ok, err := cert.VerifySignature(creatorCert.PublicKey, envelope.Payload, envelope.Signature)
+	if err != nil {
+		return errors.Wrap(err, "failed to verify signature")
+	}
+	if !ok {
+		return errors.New("failed to verify signature")
+	}
+	logger.Infof("[Orderer] Signature verified: %v", ok)
+
+	// #2 : verify certificate chain & MSPID in consortiums
+	ok, err = cs.VerifyConsortiumMSP(creatorCert, identity.MspId)
+	if err != nil {
+		return errors.Wrap(err, "failed to verify rootCACerts")
+	}
+	if !ok {
+		return errors.New("failed to verify rootCACerts")
+	}
 	return nil
 }
 
@@ -139,8 +167,4 @@ func (cs *ChainSupport) VerifyConsortiumMSP(creatorCert *x509.Certificate, mspId
 		}
 	}
 	return false, nil
-}
-
-func (cs *ChainSupport) VerifyMSPID(block *pb_common.Block) error {
-	return nil
 }

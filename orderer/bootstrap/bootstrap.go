@@ -25,7 +25,7 @@ var (
 
 const (
 	systemChannelName    = "SYSTEM_CHANNEL"
-	genesisBlockJsonPath = "/Users/mac/go/src/github.com/ddr4869/minifab/blocks/genesis.json"
+	genesisBlockJsonPath = "/Users/mac/go/src/github.com/ddr4869/minifab/nodedata/orderer0/genesis.json"
 )
 
 func Cmd() *cobra.Command {
@@ -43,7 +43,7 @@ This command should be run once when setting up a new network.`,
 	bootstrapCmd.PersistentFlags().StringVar(&mspPath, "mspdir", "/Users/mac/go/src/github.com/ddr4869/minifab/ca/OrdererOrg/ca-client/orderer0", "Path to MSP directory with certificates")
 
 	// Bootstrap command flags
-	bootstrapCmd.Flags().StringVar(&genesisPath, "genesisPath", "/Users/mac/go/src/github.com/ddr4869/minifab/blocks/genesis.block", "Path to save/load genesis block file")
+	bootstrapCmd.Flags().StringVar(&genesisPath, "genesisPath", "/Users/mac/go/src/github.com/ddr4869/minifab/nodedata/orderer0/genesis.block", "Path to save/load genesis block file")
 	bootstrapCmd.Flags().StringVar(&configTxPath, "configtx", "/Users/mac/go/src/github.com/ddr4869/minifab/config/configtx.yaml", "Path to configtx.yaml file")
 	bootstrapCmd.Flags().StringVar(&profile, "profile", "SystemChannel", "Profile name to use for genesis block")
 	bootstrapCmd.Flags().BoolVar(&bootstrap, "bootstrap", false, "Bootstrap network with genesis block")

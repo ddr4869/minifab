@@ -33,7 +33,7 @@ func init() {
 	RootCmd.Flags().StringVar(&address, "address", "0.0.0.0:7050", "Orderer server address")
 	RootCmd.Flags().StringVar(&mspID, "mspid", "OrdererMSP", "MSP ID for orderer")
 	RootCmd.Flags().StringVar(&mspPath, "mspdir", "/Users/mac/go/src/github.com/ddr4869/minifab/ca/OrdererOrg/ca-client/orderer0", "Path to MSP directory with certificates")
-	RootCmd.Flags().StringVar(&genesisFile, "genesisFile", "/Users/mac/go/src/github.com/ddr4869/minifab/blocks/genesis.block", "Path to genesis block file")
+	RootCmd.Flags().StringVar(&genesisFile, "genesisFile", "/Users/mac/go/src/github.com/ddr4869/minifab/nodedata/orderer0/genesis.block", "Path to genesis block file")
 	RootCmd.Flags().StringVar(&profile, "profile", "SystemChannel", "Profile name to use for genesis block")
 
 	RootCmd.AddCommand(bootstrap.Cmd())
