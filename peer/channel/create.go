@@ -141,7 +141,7 @@ func ProcessConfigBlock(peer *core.Peer, channelName string, data []byte) (*pb_c
 	return envelope, nil
 }
 
-func CreateAppConfigFromConfigTx(configTxPath string, profile string) (*configtx.ChannelConfig, error) {
+func CreateAppConfigFromConfigTx(configTxPath string, profile string) (*configtx.AppChannelConfig, error) {
 	// yaml.Unmarshal로 confitx.yaml로 불러온 후 proto.Marshal로 직렬화 해야함
 	// 직렬화된 데이터를 사용하여 채널 구성 생성
 	// 채널 구성 생성 후 채널 구성 반환

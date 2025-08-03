@@ -145,24 +145,12 @@ func ExtractSystemChannelConfigFromBlock(block *pb_common.Block) (*configtx.Syst
 	return &systemChannelInfo, nil
 }
 
-func ExtractAppChannelConfigFromBlock(block *pb_common.Block) (*configtx.ChannelConfig, error) {
-	if len(block.Data.Transactions) == 0 {
-		return nil, errors.New("no transactions found in block")
+func ExtractAppChannelConfigFromBlock(block *pb_common.Block) (*configtx.AppChannelConfig, error) {
+	channelConfigData, err := ExtractChannelConfigDataFromBlock(block)
+	if err != nil {
+		return nil, err
 	}
-
-	// Transaction proto로 파싱
-	protoTx := &pb_common.Transaction{}
-	if err := proto.Unmarshal(block.Data.Transactions[0], protoTx); err != nil {
-		return nil, errors.Wrap(err, "failed to unmarshal transaction")
-	}
-
-	var channelConfig configtx.ChannelConfig
-	if err := json.Unmarshal(protoTx.Payload, &channelConfig); err != nil {
-		return nil, errors.Wrap(err, "failed to unmarshal app channel config")
-	}
-
-	logger.Infof("✅ Successfully extracted AppChannelConfig from block")
-	return &channelConfig, nil
+	return channelConfigData.CC, nil
 }
 
 func GetBlockDataFromEnvelope(envelope *pb_common.Envelope) (*pb_common.Block, error) {

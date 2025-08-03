@@ -8,6 +8,7 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/ddr4869/minifab/common/configtx"
 	"github.com/ddr4869/minifab/common/logger"
 	"github.com/ddr4869/minifab/common/msp"
 	"github.com/ddr4869/minifab/config"
@@ -47,9 +48,10 @@ func NewOrderer(ordererId, mspID, mspPath, ordererAddress, genesisPath string) (
 
 	cs := &channel.ChainSupport{
 		OrdererConfig:     ordererConfig,
-		AppChannelConfigs: make(map[string]*channel.AppChannelConfig),
+		AppChannelConfigs: make(map[string]*configtx.ChannelConfig),
 	}
 	cs.LoadSystemChannelConfig(genesisPath)
+	cs.LoadExistingChannels(ordererConfig.FilesystemPath)
 
 	return &Orderer{
 		OrdererConfig: ordererConfig,

@@ -34,7 +34,7 @@ type BatchSize struct {
 	PreferredMaxBytes string `yaml:"PreferredMaxBytes"`
 }
 
-type ChannelConfig struct {
+type AppChannelConfig struct {
 	Policies      interface{}    `yaml:"Policies"` // all 등 단순 문자열일 수도, 정책구조일 수도 있음
 	Organizations []Organization `yaml:"Organizations"`
 }
@@ -55,7 +55,7 @@ type SystemChannelInfo struct {
 }
 
 type AppChannelProfile struct {
-	Application ChannelConfig `yaml:"Application"`
+	Application AppChannelConfig `yaml:"Application"`
 }
 
 type Profiles struct {
@@ -66,8 +66,13 @@ type Profiles struct {
 type ConfigTx struct {
 	Organizations []Organization         `yaml:"Organizations"`
 	Orderer       OrdererConfig          `yaml:"Orderer"`
-	Channel       ChannelConfig          `yaml:"Channel"`
+	Channel       AppChannelConfig       `yaml:"Channel"`
 	Profiles      map[string]interface{} `yaml:"Profiles"`
+}
+
+type ChannelConfig struct {
+	CC  *AppChannelConfig
+	SCC *SystemChannelInfo
 }
 
 func (c *ConfigTx) GetSystemChannelInfo(name string) (*SystemChannelInfo, error) {

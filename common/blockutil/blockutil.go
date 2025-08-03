@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"os"
 	"time"
@@ -119,7 +120,6 @@ func LoadBlock(blockPath string) (*pb_common.Block, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to read block file: %s", blockPath)
 	}
-
 	return UnmarshalBlockFromProto(blockData)
 }
 
@@ -152,4 +152,73 @@ func CalculateBlockHash(block *pb_common.Block) []byte {
 	}
 	hash := sha256.New()
 	return hash.Sum(block.Header.PreviousHash)
+}
+
+func LoadAppChannelConfigs(filesystemPath string) (map[string]*configtx.ChannelConfig, error) {
+	channelConfigs := make(map[string]*configtx.ChannelConfig)
+
+	if _, err := os.Stat(filesystemPath); os.IsNotExist(err) {
+		logger.Infof("Filesystem path does not exist: %s, starting with empty channel configs", filesystemPath)
+		return channelConfigs, nil
+	}
+
+	entries, err := os.ReadDir(filesystemPath)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to read filesystem directory: %s", filesystemPath)
+	}
+
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		channelName := entry.Name()
+		blockPath := fmt.Sprintf("%s/%s/blockfile0", filesystemPath, channelName)
+
+		appChannelConfigData, err := LoadChannelConfigDataFromBlock(blockPath)
+		if err != nil {
+			logger.Warnf("Failed to load channel config data for %s: %v", channelName, err)
+			continue
+		}
+
+		channelConfigs[channelName] = appChannelConfigData
+
+		logger.Infof("✅ Loaded app channel config for: %s", channelName)
+	}
+
+	return channelConfigs, nil
+}
+
+// LoadChannelConfigDataFromBlock 블록 파일에서 채널 설정 데이터 로드
+func LoadChannelConfigDataFromBlock(blockPath string) (*configtx.ChannelConfig, error) {
+	block, err := LoadBlock(blockPath)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to load block")
+	}
+
+	if block.Header.HeaderType != pb_common.BlockType_BLOCK_TYPE_CONFIG {
+		return nil, errors.New("block is not a config block")
+	}
+
+	return ExtractChannelConfigDataFromBlock(block)
+}
+
+func ExtractChannelConfigDataFromBlock(block *pb_common.Block) (*configtx.ChannelConfig, error) {
+	if len(block.Data.Transactions) == 0 {
+		return nil, errors.New("no transactions found in block")
+	}
+
+	// Transaction proto로 파싱
+	protoTx := &pb_common.Transaction{}
+	if err := proto.Unmarshal(block.Data.Transactions[0], protoTx); err != nil {
+		return nil, errors.Wrap(err, "failed to unmarshal transaction")
+	}
+
+	// ChannelConfigData JSON 파싱
+	var channelConfigData configtx.ChannelConfig
+	if err := json.Unmarshal(protoTx.Payload, &channelConfigData); err != nil {
+		return nil, errors.Wrap(err, "failed to unmarshal channel config data")
+	}
+	logger.Info("!! channelConfigData -> ", channelConfigData)
+	logger.Infof("✅ Successfully extracted ChannelConfigData from block")
+	return &channelConfigData, nil
 }

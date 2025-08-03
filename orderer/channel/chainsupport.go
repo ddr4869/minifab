@@ -16,17 +16,11 @@ import (
 	"github.com/pkg/errors"
 )
 
-// ChannelInfo 채널 정보를 담는 구조체
-type AppChannelConfig struct {
-	CC  *configtx.ChannelConfig
-	SCC *configtx.SystemChannelInfo
-}
-
 // ChainSupport는 Orderer 노드에서 메모리 상 존재하며 채널 정보를 관리한다.
 // 지속성 있는 데이터의 경우 Orderer의 파일 시스템에 저장되어야 한다.
 type ChainSupport struct {
 	SystemChannelInfo *configtx.SystemChannelInfo
-	AppChannelConfigs map[string]*AppChannelConfig
+	AppChannelConfigs map[string]*configtx.ChannelConfig
 
 	OrdererConfig *config.OrdererCfg
 	Mutex         sync.RWMutex
@@ -44,6 +38,23 @@ func (cs *ChainSupport) LoadSystemChannelConfig(genesisPath string) {
 		return
 	}
 	cs.SystemChannelInfo = scc
+}
+
+func (cs *ChainSupport) LoadExistingChannels(filesystemPath string) {
+	logger.Info("🔄 Loading existing channel configurations...")
+
+	appChannelConfigs, err := blockutil.LoadAppChannelConfigs(filesystemPath)
+	if err != nil {
+		logger.Errorf("Failed to load existing channel configs: %v", err)
+		return
+	}
+
+	for channelName, config := range appChannelConfigs {
+		cs.AppChannelConfigs[channelName] = &configtx.ChannelConfig{
+			CC:  config.CC,
+			SCC: config.SCC,
+		}
+	}
 }
 
 // check func (h *Handler) ProcessStream(stream ccintf.ChaincodeStream) error
@@ -71,36 +82,47 @@ func (cs *ChainSupport) CreateChannel(stream pb_orderer.OrdererService_CreateCha
 		if err != nil {
 			return errors.Wrap(err, "failed to extract app channel config from block")
 		}
+		logger.Info("appConfig -> ", appConfig)
 		logger.Infof("[Orderer] Received app config: %+v", appConfig)
 		time.Sleep(3 * time.Second)
 
 		// #TODO : phase 2 - Save config block to the ChainSupport
-		cs.AppChannelConfigs[payload.Header.ChannelId] = &AppChannelConfig{CC: appConfig, SCC: cs.SystemChannelInfo}
-
-		appConfigBytes, err := json.Marshal(appConfig)
-		if err != nil {
-			return errors.Wrap(err, "failed to marshal app config")
+		appChannelConfig := &configtx.ChannelConfig{
+			CC:  appConfig,
+			SCC: cs.SystemChannelInfo,
 		}
-		appBlock, err := blockutil.GenerateConfigBlock(appConfigBytes, payload.Header.ChannelId, cs.OrdererConfig.MSP.GetSigningIdentity())
+		cs.AppChannelConfigs[payload.Header.ChannelId] = appChannelConfig
+
+		configDataBytes, err := json.Marshal(appChannelConfig)
+		if err != nil {
+			return errors.Wrap(err, "failed to marshal channel config data")
+		}
+		appBlock, err := blockutil.GenerateConfigBlock(configDataBytes, payload.Header.ChannelId, cs.OrdererConfig.MSP.GetSigningIdentity())
 		if err != nil {
 			return errors.Wrap(err, "failed to generate config block")
 		}
 		if err := blockutil.SaveBlockFile(appBlock, payload.Header.ChannelId, cs.OrdererConfig.FilesystemPath); err != nil {
 			return errors.Wrap(err, "failed to save config block")
 		}
+		// TODO : Envelope 생성 후 전송
 		stream.Send(appBlock)
 		time.Sleep(3 * time.Second)
 		logger.Infof("[Orderer] Sent app block to the peer")
-		// #TODO : phase 3 - Send Block to the Peer
-
-		// stream.Send(&pb_common.Block{
-		// 	Header: &pb_common.BlockHeader{
-		// 		Number: 1,
-		// 	},
-		// 	Data: appBlockBytes,
-		// })
 
 	}
+}
+
+func (cs *ChainSupport) GetChannelInfo(channelName string) (*configtx.ChannelConfig, bool) {
+	config, exists := cs.AppChannelConfigs[channelName]
+	return config, exists
+}
+
+func (cs *ChainSupport) ListChannels() []string {
+	channels := make([]string, 0, len(cs.AppChannelConfigs))
+	for channelName := range cs.AppChannelConfigs {
+		channels = append(channels, channelName)
+	}
+	return channels
 }
 
 func (cs *ChainSupport) VerifyChannelCreationEnvelope(envelope *pb_common.Envelope) error {
