@@ -88,6 +88,7 @@ func CreateChannel(peer *core.Peer, channelName, profileName string) error {
 	}
 
 	// #phase 3 - save config block
+	// TODO : Committer 작업 적용 후 저장
 	if err := blockutil.SaveBlockFile(block, channelName, peer.Peer.FilesystemPath); err != nil {
 		return errors.Wrap(err, "failed to save config block")
 	}

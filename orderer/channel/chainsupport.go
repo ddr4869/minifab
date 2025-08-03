@@ -4,7 +4,6 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"sync"
-	"time"
 
 	"github.com/ddr4869/minifab/common/blockutil"
 	"github.com/ddr4869/minifab/common/cert"
@@ -82,9 +81,7 @@ func (cs *ChainSupport) CreateChannel(stream pb_orderer.OrdererService_CreateCha
 		if err != nil {
 			return errors.Wrap(err, "failed to extract app channel config from block")
 		}
-		logger.Info("appConfig -> ", appConfig)
 		logger.Infof("[Orderer] Received app config: %+v", appConfig)
-		time.Sleep(3 * time.Second)
 
 		// #TODO : phase 2 - Save config block to the ChainSupport
 		appChannelConfig := &configtx.ChannelConfig{
@@ -106,7 +103,6 @@ func (cs *ChainSupport) CreateChannel(stream pb_orderer.OrdererService_CreateCha
 		}
 		// TODO : Envelope 생성 후 전송
 		stream.Send(appBlock)
-		time.Sleep(3 * time.Second)
 		logger.Infof("[Orderer] Sent app block to the peer")
 
 	}
