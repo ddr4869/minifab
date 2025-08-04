@@ -7,14 +7,12 @@ option go_package = "github.com/ddr4869/minifab/proto/orderer";
 import "proto/common/common.proto";
 
 service OrdererService {
-    rpc CreateChannel(stream common.Envelope) returns (stream common.Block) {}
+    rpc CreateChannel(stream common.Envelope) returns (stream BroadcastResponse) {}
 }
 
 
-message BootstrapResponse {
-    common.StatusCode status = 1;
-    string message = 2;
-    string genesis_file = 3;
-    string channel_id = 4;
+message BroadcastResponse {
+    common.Status status = 1;
+    common.Block block = 2;
 }
 

@@ -7,7 +7,7 @@ option go_package = "github.com/ddr4869/minifab/proto/common";
 import "google/protobuf/timestamp.proto";
 
 // 상태 코드
-enum StatusCode {
+enum Status {
     OK = 0;
     INVALID_ARGUMENT = 1;
     NOT_FOUND = 2;

@@ -22,30 +22,28 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type BootstrapResponse struct {
+type BroadcastResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Status        common.StatusCode      `protobuf:"varint,1,opt,name=status,proto3,enum=common.StatusCode" json:"status,omitempty"`
-	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
-	GenesisFile   string                 `protobuf:"bytes,3,opt,name=genesis_file,json=genesisFile,proto3" json:"genesis_file,omitempty"`
-	ChannelId     string                 `protobuf:"bytes,4,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`
+	Status        common.Status          `protobuf:"varint,1,opt,name=status,proto3,enum=common.Status" json:"status,omitempty"`
+	Block         *common.Block          `protobuf:"bytes,2,opt,name=block,proto3" json:"block,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *BootstrapResponse) Reset() {
-	*x = BootstrapResponse{}
+func (x *BroadcastResponse) Reset() {
+	*x = BroadcastResponse{}
 	mi := &file_proto_orderer_orderer_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *BootstrapResponse) String() string {
+func (x *BroadcastResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*BootstrapResponse) ProtoMessage() {}
+func (*BroadcastResponse) ProtoMessage() {}
 
-func (x *BootstrapResponse) ProtoReflect() protoreflect.Message {
+func (x *BroadcastResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_proto_orderer_orderer_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -57,52 +55,35 @@ func (x *BootstrapResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use BootstrapResponse.ProtoReflect.Descriptor instead.
-func (*BootstrapResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use BroadcastResponse.ProtoReflect.Descriptor instead.
+func (*BroadcastResponse) Descriptor() ([]byte, []int) {
 	return file_proto_orderer_orderer_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *BootstrapResponse) GetStatus() common.StatusCode {
+func (x *BroadcastResponse) GetStatus() common.Status {
 	if x != nil {
 		return x.Status
 	}
-	return common.StatusCode(0)
+	return common.Status(0)
 }
 
-func (x *BootstrapResponse) GetMessage() string {
+func (x *BroadcastResponse) GetBlock() *common.Block {
 	if x != nil {
-		return x.Message
+		return x.Block
 	}
-	return ""
-}
-
-func (x *BootstrapResponse) GetGenesisFile() string {
-	if x != nil {
-		return x.GenesisFile
-	}
-	return ""
-}
-
-func (x *BootstrapResponse) GetChannelId() string {
-	if x != nil {
-		return x.ChannelId
-	}
-	return ""
+	return nil
 }
 
 var File_proto_orderer_orderer_proto protoreflect.FileDescriptor
 
 const file_proto_orderer_orderer_proto_rawDesc = "" +
 	"\n" +
-	"\x1bproto/orderer/orderer.proto\x12\aorderer\x1a\x19proto/common/common.proto\"\x9b\x01\n" +
-	"\x11BootstrapResponse\x12*\n" +
-	"\x06status\x18\x01 \x01(\x0e2\x12.common.StatusCodeR\x06status\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage\x12!\n" +
-	"\fgenesis_file\x18\x03 \x01(\tR\vgenesisFile\x12\x1d\n" +
-	"\n" +
-	"channel_id\x18\x04 \x01(\tR\tchannelId2H\n" +
-	"\x0eOrdererService\x126\n" +
-	"\rCreateChannel\x12\x10.common.Envelope\x1a\r.common.Block\"\x00(\x010\x01B*Z(github.com/ddr4869/minifab/proto/ordererb\x06proto3"
+	"\x1bproto/orderer/orderer.proto\x12\aorderer\x1a\x19proto/common/common.proto\"`\n" +
+	"\x11BroadcastResponse\x12&\n" +
+	"\x06status\x18\x01 \x01(\x0e2\x0e.common.StatusR\x06status\x12#\n" +
+	"\x05block\x18\x02 \x01(\v2\r.common.BlockR\x05block2U\n" +
+	"\x0eOrdererService\x12C\n" +
+	"\rCreateChannel\x12\x10.common.Envelope\x1a\x1a.orderer.BroadcastResponse\"\x00(\x010\x01B*Z(github.com/ddr4869/minifab/proto/ordererb\x06proto3"
 
 var (
 	file_proto_orderer_orderer_proto_rawDescOnce sync.Once
@@ -118,20 +99,21 @@ func file_proto_orderer_orderer_proto_rawDescGZIP() []byte {
 
 var file_proto_orderer_orderer_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_proto_orderer_orderer_proto_goTypes = []any{
-	(*BootstrapResponse)(nil), // 0: orderer.BootstrapResponse
-	(common.StatusCode)(0),    // 1: common.StatusCode
-	(*common.Envelope)(nil),   // 2: common.Envelope
-	(*common.Block)(nil),      // 3: common.Block
+	(*BroadcastResponse)(nil), // 0: orderer.BroadcastResponse
+	(common.Status)(0),        // 1: common.Status
+	(*common.Block)(nil),      // 2: common.Block
+	(*common.Envelope)(nil),   // 3: common.Envelope
 }
 var file_proto_orderer_orderer_proto_depIdxs = []int32{
-	1, // 0: orderer.BootstrapResponse.status:type_name -> common.StatusCode
-	2, // 1: orderer.OrdererService.CreateChannel:input_type -> common.Envelope
-	3, // 2: orderer.OrdererService.CreateChannel:output_type -> common.Block
-	2, // [2:3] is the sub-list for method output_type
-	1, // [1:2] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	1, // 0: orderer.BroadcastResponse.status:type_name -> common.Status
+	2, // 1: orderer.BroadcastResponse.block:type_name -> common.Block
+	3, // 2: orderer.OrdererService.CreateChannel:input_type -> common.Envelope
+	0, // 3: orderer.OrdererService.CreateChannel:output_type -> orderer.BroadcastResponse
+	3, // [3:4] is the sub-list for method output_type
+	2, // [2:3] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_proto_orderer_orderer_proto_init() }

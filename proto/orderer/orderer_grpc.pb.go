@@ -27,7 +27,7 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type OrdererServiceClient interface {
-	CreateChannel(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[common.Envelope, common.Block], error)
+	CreateChannel(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[common.Envelope, BroadcastResponse], error)
 }
 
 type ordererServiceClient struct {
@@ -38,24 +38,24 @@ func NewOrdererServiceClient(cc grpc.ClientConnInterface) OrdererServiceClient {
 	return &ordererServiceClient{cc}
 }
 
-func (c *ordererServiceClient) CreateChannel(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[common.Envelope, common.Block], error) {
+func (c *ordererServiceClient) CreateChannel(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[common.Envelope, BroadcastResponse], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	stream, err := c.cc.NewStream(ctx, &OrdererService_ServiceDesc.Streams[0], OrdererService_CreateChannel_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &grpc.GenericClientStream[common.Envelope, common.Block]{ClientStream: stream}
+	x := &grpc.GenericClientStream[common.Envelope, BroadcastResponse]{ClientStream: stream}
 	return x, nil
 }
 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type OrdererService_CreateChannelClient = grpc.BidiStreamingClient[common.Envelope, common.Block]
+type OrdererService_CreateChannelClient = grpc.BidiStreamingClient[common.Envelope, BroadcastResponse]
 
 // OrdererServiceServer is the server API for OrdererService service.
 // All implementations must embed UnimplementedOrdererServiceServer
 // for forward compatibility.
 type OrdererServiceServer interface {
-	CreateChannel(grpc.BidiStreamingServer[common.Envelope, common.Block]) error
+	CreateChannel(grpc.BidiStreamingServer[common.Envelope, BroadcastResponse]) error
 	mustEmbedUnimplementedOrdererServiceServer()
 }
 
@@ -66,7 +66,7 @@ type OrdererServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedOrdererServiceServer struct{}
 
-func (UnimplementedOrdererServiceServer) CreateChannel(grpc.BidiStreamingServer[common.Envelope, common.Block]) error {
+func (UnimplementedOrdererServiceServer) CreateChannel(grpc.BidiStreamingServer[common.Envelope, BroadcastResponse]) error {
 	return status.Errorf(codes.Unimplemented, "method CreateChannel not implemented")
 }
 func (UnimplementedOrdererServiceServer) mustEmbedUnimplementedOrdererServiceServer() {}
@@ -91,11 +91,11 @@ func RegisterOrdererServiceServer(s grpc.ServiceRegistrar, srv OrdererServiceSer
 }
 
 func _OrdererService_CreateChannel_Handler(srv interface{}, stream grpc.ServerStream) error {
-	return srv.(OrdererServiceServer).CreateChannel(&grpc.GenericServerStream[common.Envelope, common.Block]{ServerStream: stream})
+	return srv.(OrdererServiceServer).CreateChannel(&grpc.GenericServerStream[common.Envelope, BroadcastResponse]{ServerStream: stream})
 }
 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type OrdererService_CreateChannelServer = grpc.BidiStreamingServer[common.Envelope, common.Block]
+type OrdererService_CreateChannelServer = grpc.BidiStreamingServer[common.Envelope, BroadcastResponse]
 
 // OrdererService_ServiceDesc is the grpc.ServiceDesc for OrdererService service.
 // It's only intended for direct use with grpc.RegisterService,

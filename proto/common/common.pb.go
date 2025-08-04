@@ -23,34 +23,34 @@ const (
 )
 
 // 상태 코드
-type StatusCode int32
+type Status int32
 
 const (
-	StatusCode_OK                            StatusCode = 0
-	StatusCode_INVALID_ARGUMENT              StatusCode = 1
-	StatusCode_NOT_FOUND                     StatusCode = 2
-	StatusCode_ALREADY_EXISTS                StatusCode = 3
-	StatusCode_PERMISSION_DENIED             StatusCode = 4
-	StatusCode_INTERNAL_ERROR                StatusCode = 5
-	StatusCode_UNAVAILABLE                   StatusCode = 6
-	StatusCode_TIMEOUT                       StatusCode = 7
-	StatusCode_INVALID_SIGNATURE             StatusCode = 8
-	StatusCode_INVALID_CERTIFICATE           StatusCode = 9
-	StatusCode_CHANNEL_NOT_FOUND             StatusCode = 10
-	StatusCode_TRANSACTION_VALIDATION_FAILED StatusCode = 11
-	StatusCode_ENDORSEMENT_POLICY_FAILURE    StatusCode = 12
-	StatusCode_NETWORK_ERROR                 StatusCode = 13
-	StatusCode_CONSENSUS_ERROR               StatusCode = 14
-	StatusCode_LEDGER_ERROR                  StatusCode = 15
-	StatusCode_MSP_ERROR                     StatusCode = 16
-	StatusCode_BLOCK_VALIDATION_FAILED       StatusCode = 17
-	StatusCode_INVALID_BLOCK                 StatusCode = 18
-	StatusCode_INVALID_TRANSACTION_FORMAT    StatusCode = 19
+	Status_OK                            Status = 0
+	Status_INVALID_ARGUMENT              Status = 1
+	Status_NOT_FOUND                     Status = 2
+	Status_ALREADY_EXISTS                Status = 3
+	Status_PERMISSION_DENIED             Status = 4
+	Status_INTERNAL_ERROR                Status = 5
+	Status_UNAVAILABLE                   Status = 6
+	Status_TIMEOUT                       Status = 7
+	Status_INVALID_SIGNATURE             Status = 8
+	Status_INVALID_CERTIFICATE           Status = 9
+	Status_CHANNEL_NOT_FOUND             Status = 10
+	Status_TRANSACTION_VALIDATION_FAILED Status = 11
+	Status_ENDORSEMENT_POLICY_FAILURE    Status = 12
+	Status_NETWORK_ERROR                 Status = 13
+	Status_CONSENSUS_ERROR               Status = 14
+	Status_LEDGER_ERROR                  Status = 15
+	Status_MSP_ERROR                     Status = 16
+	Status_BLOCK_VALIDATION_FAILED       Status = 17
+	Status_INVALID_BLOCK                 Status = 18
+	Status_INVALID_TRANSACTION_FORMAT    Status = 19
 )
 
-// Enum value maps for StatusCode.
+// Enum value maps for Status.
 var (
-	StatusCode_name = map[int32]string{
+	Status_name = map[int32]string{
 		0:  "OK",
 		1:  "INVALID_ARGUMENT",
 		2:  "NOT_FOUND",
@@ -72,7 +72,7 @@ var (
 		18: "INVALID_BLOCK",
 		19: "INVALID_TRANSACTION_FORMAT",
 	}
-	StatusCode_value = map[string]int32{
+	Status_value = map[string]int32{
 		"OK":                            0,
 		"INVALID_ARGUMENT":              1,
 		"NOT_FOUND":                     2,
@@ -96,30 +96,30 @@ var (
 	}
 )
 
-func (x StatusCode) Enum() *StatusCode {
-	p := new(StatusCode)
+func (x Status) Enum() *Status {
+	p := new(Status)
 	*p = x
 	return p
 }
 
-func (x StatusCode) String() string {
+func (x Status) String() string {
 	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
 }
 
-func (StatusCode) Descriptor() protoreflect.EnumDescriptor {
+func (Status) Descriptor() protoreflect.EnumDescriptor {
 	return file_proto_common_common_proto_enumTypes[0].Descriptor()
 }
 
-func (StatusCode) Type() protoreflect.EnumType {
+func (Status) Type() protoreflect.EnumType {
 	return &file_proto_common_common_proto_enumTypes[0]
 }
 
-func (x StatusCode) Number() protoreflect.EnumNumber {
+func (x Status) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
 }
 
-// Deprecated: Use StatusCode.Descriptor instead.
-func (StatusCode) EnumDescriptor() ([]byte, []int) {
+// Deprecated: Use Status.Descriptor instead.
+func (Status) EnumDescriptor() ([]byte, []int) {
 	return file_proto_common_common_proto_rawDescGZIP(), []int{0}
 }
 
@@ -825,9 +825,8 @@ const file_proto_common_common_proto_rawDesc = "" +
 	"\ttimestamp\x18\x05 \x01(\x03R\ttimestamp\";\n" +
 	"\bIdentity\x12\x18\n" +
 	"\acreator\x18\x01 \x01(\fR\acreator\x12\x15\n" +
-	"\x06msp_id\x18\x02 \x01(\tR\x05mspId*\xb9\x03\n" +
-	"\n" +
-	"StatusCode\x12\x06\n" +
+	"\x06msp_id\x18\x02 \x01(\tR\x05mspId*\xb5\x03\n" +
+	"\x06Status\x12\x06\n" +
 	"\x02OK\x10\x00\x12\x14\n" +
 	"\x10INVALID_ARGUMENT\x10\x01\x12\r\n" +
 	"\tNOT_FOUND\x10\x02\x12\x12\n" +
@@ -874,7 +873,7 @@ func file_proto_common_common_proto_rawDescGZIP() []byte {
 var file_proto_common_common_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
 var file_proto_common_common_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_proto_common_common_proto_goTypes = []any{
-	(StatusCode)(0),               // 0: common.StatusCode
+	(Status)(0),                   // 0: common.Status
 	(MessageType)(0),              // 1: common.MessageType
 	(BlockType)(0),                // 2: common.BlockType
 	(*Envelope)(nil),              // 3: common.Envelope

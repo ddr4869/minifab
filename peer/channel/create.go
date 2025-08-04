@@ -1,22 +1,21 @@
 package channel
 
 import (
-	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/json"
 	"log"
-	"time"
 
 	"github.com/ddr4869/minifab/common/blockutil"
 	"github.com/ddr4869/minifab/common/configtx"
+	"github.com/ddr4869/minifab/common/msp"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/ddr4869/minifab/common/logger"
 	"github.com/ddr4869/minifab/peer/core"
 	pb_common "github.com/ddr4869/minifab/proto/common"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 const cfgFile = "config/configtx.yaml"
@@ -70,26 +69,18 @@ func CreateChannel(peer *core.Peer, channelName, profileName string) error {
 	}
 
 	// #phase 2 - send config block to orderer
-	envelope, err := ProcessConfigBlock(peer, channelName, appCfgBytes)
+	envelope, err := ProcessConfigBlock(peer.Peer.MSP.GetSigningIdentity(), channelName, appCfgBytes)
 	if err != nil {
 		return errors.Wrap(err, "failed to create payload")
 	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	stream, err := peer.OrdererClient.GetClient().CreateChannel(ctx)
+	block, err := peer.OrdererClient.Send(envelope)
 	if err != nil {
-		return errors.Wrapf(err, "failed to stream(create channel)")
-	}
-	stream.Send(envelope)
-	block, err := stream.Recv()
-	if err != nil {
-		return errors.Wrapf(err, "failed to receive response")
+		return errors.Wrapf(err, "failed to send envelope")
 	}
 
 	// #phase 3 - save config block
 	// TODO : Committer 작업 적용 후 저장
-	if err := blockutil.SaveBlockFile(block, channelName, peer.Peer.FilesystemPath); err != nil {
+	if err := blockutil.SaveBlockFile(block.Block, channelName, peer.Peer.FilesystemPath); err != nil {
 		return errors.Wrap(err, "failed to save config block")
 	}
 	logger.Info("✅ Broadcast Success")
@@ -97,24 +88,9 @@ func CreateChannel(peer *core.Peer, channelName, profileName string) error {
 	return nil
 }
 
-func generateAppConfigBlock(peer *core.Peer, channelName, profileName string) (*pb_common.Block, error) {
-	appConfig, err := CreateAppConfigFromConfigTx(cfgFile, profileName)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to create app config")
-	}
+func ProcessConfigBlock(signer msp.SigningIdentity, channelName string, data []byte) (*pb_common.Envelope, error) {
 
-	appConfigBytes, err := json.Marshal(appConfig)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to marshal app config")
-	}
-
-	return blockutil.GenerateConfigBlock(appConfigBytes, channelName, peer.Peer.MSP.GetSigningIdentity())
-}
-
-// config block 생성, 서명 후 envelope 생성
-func ProcessConfigBlock(peer *core.Peer, channelName string, data []byte) (*pb_common.Envelope, error) {
-
-	header, err := blockutil.CreateHeader(peer.Client.MSP.GetSigningIdentity(), pb_common.MessageType_MESSAGE_TYPE_CONFIG, channelName)
+	header, err := blockutil.CreateHeader(signer, pb_common.MessageType_MESSAGE_TYPE_CONFIG, channelName)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create header")
 	}
@@ -130,7 +106,7 @@ func ProcessConfigBlock(peer *core.Peer, channelName string, data []byte) (*pb_c
 	}
 
 	payloadHash := sha256.Sum256(payloadBytes)
-	sig, err := peer.Client.MSP.GetSigningIdentity().Sign(rand.Reader, payloadHash[:], nil)
+	sig, err := signer.Sign(rand.Reader, payloadHash[:], nil)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to sign payload")
 	}
@@ -140,6 +116,20 @@ func ProcessConfigBlock(peer *core.Peer, channelName string, data []byte) (*pb_c
 		return nil, errors.Wrap(err, "failed to create envelope")
 	}
 	return envelope, nil
+}
+
+func generateAppConfigBlock(peer *core.Peer, channelName, profileName string) (*pb_common.Block, error) {
+	appConfig, err := CreateAppConfigFromConfigTx(cfgFile, profileName)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create app config")
+	}
+
+	appConfigBytes, err := json.Marshal(appConfig)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to marshal app config")
+	}
+
+	return blockutil.GenerateConfigBlock(appConfigBytes, channelName, peer.Peer.MSP.GetSigningIdentity())
 }
 
 func CreateAppConfigFromConfigTx(configTxPath string, profile string) (*configtx.AppChannelConfig, error) {

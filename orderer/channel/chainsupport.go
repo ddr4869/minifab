@@ -3,6 +3,8 @@ package channel
 import (
 	"crypto/x509"
 	"encoding/json"
+	"fmt"
+	"io"
 	"sync"
 
 	"github.com/ddr4869/minifab/common/blockutil"
@@ -60,30 +62,46 @@ func (cs *ChainSupport) LoadExistingChannels(filesystemPath string) {
 func (cs *ChainSupport) CreateChannel(stream pb_orderer.OrdererService_CreateChannelServer) error {
 	cs.Mutex.Lock()
 	defer cs.Mutex.Unlock()
+
 	for {
 		msg, err := stream.Recv()
+		if err == io.EOF {
+			logger.Infof("[Orderer] Client disconnected")
+			return nil
+		}
 		if err != nil {
+			logger.Errorf("[Orderer] Failed to receive message: %v", err)
 			return err
 		}
 		if err := cs.VerifyChannelCreationEnvelope(msg); err != nil {
+			cs.sendErrorResponse(stream, pb_common.Status_INVALID_SIGNATURE, fmt.Sprintf("Envelope verification failed: %v", err))
 			return err
 		}
+
 		payload, err := blockutil.UnmarshalPayloadFromProto(msg.Payload)
 		if err != nil {
-			return errors.Wrap(err, "failed to unmarshal payload")
+			cs.sendErrorResponse(stream, pb_common.Status_INVALID_TRANSACTION_FORMAT, fmt.Sprintf("Failed to unmarshal payload: %v", err))
+			return err
 		}
 
 		block, err := blockutil.UnmarshalBlockFromProto(payload.Data)
 		if err != nil {
-			return errors.Wrap(err, "failed to unmarshal block")
+			cs.sendErrorResponse(stream, pb_common.Status_INVALID_BLOCK, fmt.Sprintf("Failed to unmarshal block: %v", err))
+			return err
 		}
+
 		appConfig, err := blockutil.ExtractAppChannelConfigFromBlock(block)
 		if err != nil {
-			return errors.Wrap(err, "failed to extract app channel config from block")
+			cs.sendErrorResponse(stream, pb_common.Status_INVALID_BLOCK, fmt.Sprintf("Failed to extract app channel config: %v", err))
+			return err
 		}
 		logger.Infof("[Orderer] Received app config: %+v", appConfig)
 
-		// #TODO : phase 2 - Save config block to the ChainSupport
+		if _, exists := cs.AppChannelConfigs[payload.Header.ChannelId]; exists {
+			cs.sendErrorResponse(stream, pb_common.Status_ALREADY_EXISTS, fmt.Sprintf("Channel already exists: %s", payload.Header.ChannelId))
+			return errors.New("channel already exists")
+		}
+
 		appChannelConfig := &configtx.ChannelConfig{
 			CC:  appConfig,
 			SCC: cs.SystemChannelInfo,
@@ -92,19 +110,23 @@ func (cs *ChainSupport) CreateChannel(stream pb_orderer.OrdererService_CreateCha
 
 		configDataBytes, err := json.Marshal(appChannelConfig)
 		if err != nil {
-			return errors.Wrap(err, "failed to marshal channel config data")
+			cs.sendErrorResponse(stream, pb_common.Status_INTERNAL_ERROR, fmt.Sprintf("Failed to marshal channel config data: %v", err))
+			return err
 		}
+
 		appBlock, err := blockutil.GenerateConfigBlock(configDataBytes, payload.Header.ChannelId, cs.OrdererConfig.MSP.GetSigningIdentity())
 		if err != nil {
-			return errors.Wrap(err, "failed to generate config block")
+			cs.sendErrorResponse(stream, pb_common.Status_INTERNAL_ERROR, fmt.Sprintf("Failed to generate config block: %v", err))
+			return err
 		}
-		if err := blockutil.SaveBlockFile(appBlock, payload.Header.ChannelId, cs.OrdererConfig.FilesystemPath); err != nil {
-			return errors.Wrap(err, "failed to save config block")
-		}
-		// TODO : Envelope 생성 후 전송
-		stream.Send(appBlock)
-		logger.Infof("[Orderer] Sent app block to the peer")
 
+		if err := blockutil.SaveBlockFile(appBlock, payload.Header.ChannelId, cs.OrdererConfig.FilesystemPath); err != nil {
+			cs.sendErrorResponse(stream, pb_common.Status_LEDGER_ERROR, fmt.Sprintf("Failed to save config block: %v", err))
+			return err
+		}
+		if err := cs.sendSuccessResponse(stream, appBlock, payload.Header.ChannelId); err != nil {
+			return err
+		}
 	}
 }
 
@@ -185,4 +207,28 @@ func (cs *ChainSupport) VerifyConsortiumMSP(creatorCert *x509.Certificate, mspId
 		}
 	}
 	return false, nil
+}
+
+func (cs *ChainSupport) sendErrorResponse(stream pb_orderer.OrdererService_CreateChannelServer, status pb_common.Status, errMsg string) {
+	logger.Errorf("[Orderer] %s", errMsg)
+	response := &pb_orderer.BroadcastResponse{
+		Status: status,
+		Block:  nil,
+	}
+	if sendErr := stream.Send(response); sendErr != nil {
+		logger.Errorf("[Orderer] Failed to send error response: %v", sendErr)
+	}
+}
+
+func (cs *ChainSupport) sendSuccessResponse(stream pb_orderer.OrdererService_CreateChannelServer, block *pb_common.Block, channelId string) error {
+	response := &pb_orderer.BroadcastResponse{
+		Status: pb_common.Status_OK,
+		Block:  block,
+	}
+	if err := stream.Send(response); err != nil {
+		logger.Errorf("[Orderer] Failed to send success response: %v", err)
+		return err
+	}
+	logger.Infof("[Orderer] Successfully created channel: %s", channelId)
+	return nil
 }

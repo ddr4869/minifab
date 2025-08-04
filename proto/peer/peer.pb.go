@@ -25,7 +25,7 @@ const (
 // ProcessBlockResponse - 블록 처리 응답
 type ProcessBlockResponse struct {
 	state               protoimpl.MessageState `protogen:"open.v1"`
-	Status              common.StatusCode      `protobuf:"varint,1,opt,name=status,proto3,enum=common.StatusCode" json:"status,omitempty"`
+	Status              common.Status          `protobuf:"varint,1,opt,name=status,proto3,enum=common.Status" json:"status,omitempty"`
 	Message             string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
 	BlockNumber         uint64                 `protobuf:"varint,3,opt,name=block_number,json=blockNumber,proto3" json:"block_number,omitempty"`
 	ValidTransactions   int32                  `protobuf:"varint,4,opt,name=valid_transactions,json=validTransactions,proto3" json:"valid_transactions,omitempty"`
@@ -64,11 +64,11 @@ func (*ProcessBlockResponse) Descriptor() ([]byte, []int) {
 	return file_proto_peer_peer_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *ProcessBlockResponse) GetStatus() common.StatusCode {
+func (x *ProcessBlockResponse) GetStatus() common.Status {
 	if x != nil {
 		return x.Status
 	}
-	return common.StatusCode(0)
+	return common.Status(0)
 }
 
 func (x *ProcessBlockResponse) GetMessage() string {
@@ -171,7 +171,7 @@ func (x *JoinChannelRequest) GetPeerIdentity() []byte {
 // JoinChannelResponse - 채널 참여 응답
 type JoinChannelResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Status        common.StatusCode      `protobuf:"varint,1,opt,name=status,proto3,enum=common.StatusCode" json:"status,omitempty"`
+	Status        common.Status          `protobuf:"varint,1,opt,name=status,proto3,enum=common.Status" json:"status,omitempty"`
 	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
 	ChannelId     string                 `protobuf:"bytes,3,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`
 	CurrentHeight uint64                 `protobuf:"varint,4,opt,name=current_height,json=currentHeight,proto3" json:"current_height,omitempty"`
@@ -209,11 +209,11 @@ func (*JoinChannelResponse) Descriptor() ([]byte, []int) {
 	return file_proto_peer_peer_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *JoinChannelResponse) GetStatus() common.StatusCode {
+func (x *JoinChannelResponse) GetStatus() common.Status {
 	if x != nil {
 		return x.Status
 	}
-	return common.StatusCode(0)
+	return common.Status(0)
 }
 
 func (x *JoinChannelResponse) GetMessage() string {
@@ -241,9 +241,9 @@ var File_proto_peer_peer_proto protoreflect.FileDescriptor
 
 const file_proto_peer_peer_proto_rawDesc = "" +
 	"\n" +
-	"\x15proto/peer/peer.proto\x12\x04peer\x1a\x19proto/common/common.proto\"\xe1\x01\n" +
-	"\x14ProcessBlockResponse\x12*\n" +
-	"\x06status\x18\x01 \x01(\x0e2\x12.common.StatusCodeR\x06status\x12\x18\n" +
+	"\x15proto/peer/peer.proto\x12\x04peer\x1a\x19proto/common/common.proto\"\xdd\x01\n" +
+	"\x14ProcessBlockResponse\x12&\n" +
+	"\x06status\x18\x01 \x01(\x0e2\x0e.common.StatusR\x06status\x12\x18\n" +
 	"\amessage\x18\x02 \x01(\tR\amessage\x12!\n" +
 	"\fblock_number\x18\x03 \x01(\x04R\vblockNumber\x12-\n" +
 	"\x12valid_transactions\x18\x04 \x01(\x05R\x11validTransactions\x121\n" +
@@ -253,9 +253,9 @@ const file_proto_peer_peer_proto_rawDesc = "" +
 	"channel_id\x18\x01 \x01(\tR\tchannelId\x122\n" +
 	"\rgenesis_block\x18\x02 \x01(\v2\r.common.BlockR\fgenesisBlock\x12\x17\n" +
 	"\apeer_id\x18\x03 \x01(\tR\x06peerId\x12#\n" +
-	"\rpeer_identity\x18\x04 \x01(\fR\fpeerIdentity\"\xa1\x01\n" +
-	"\x13JoinChannelResponse\x12*\n" +
-	"\x06status\x18\x01 \x01(\x0e2\x12.common.StatusCodeR\x06status\x12\x18\n" +
+	"\rpeer_identity\x18\x04 \x01(\fR\fpeerIdentity\"\x9d\x01\n" +
+	"\x13JoinChannelResponse\x12&\n" +
+	"\x06status\x18\x01 \x01(\x0e2\x0e.common.StatusR\x06status\x12\x18\n" +
 	"\amessage\x18\x02 \x01(\tR\amessage\x12\x1d\n" +
 	"\n" +
 	"channel_id\x18\x03 \x01(\tR\tchannelId\x12%\n" +
@@ -281,14 +281,14 @@ var file_proto_peer_peer_proto_goTypes = []any{
 	(*ProcessBlockResponse)(nil), // 0: peer.ProcessBlockResponse
 	(*JoinChannelRequest)(nil),   // 1: peer.JoinChannelRequest
 	(*JoinChannelResponse)(nil),  // 2: peer.JoinChannelResponse
-	(common.StatusCode)(0),       // 3: common.StatusCode
+	(common.Status)(0),           // 3: common.Status
 	(*common.Block)(nil),         // 4: common.Block
 	(*common.Envelope)(nil),      // 5: common.Envelope
 }
 var file_proto_peer_peer_proto_depIdxs = []int32{
-	3, // 0: peer.ProcessBlockResponse.status:type_name -> common.StatusCode
+	3, // 0: peer.ProcessBlockResponse.status:type_name -> common.Status
 	4, // 1: peer.JoinChannelRequest.genesis_block:type_name -> common.Block
-	3, // 2: peer.JoinChannelResponse.status:type_name -> common.StatusCode
+	3, // 2: peer.JoinChannelResponse.status:type_name -> common.Status
 	5, // 3: peer.PeerService.ProcessBlock:input_type -> common.Envelope
 	1, // 4: peer.PeerService.JoinChannel:input_type -> peer.JoinChannelRequest
 	0, // 5: peer.PeerService.ProcessBlock:output_type -> peer.ProcessBlockResponse

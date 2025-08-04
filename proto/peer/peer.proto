@@ -18,7 +18,7 @@ service PeerService {
 
 // ProcessBlockResponse - 블록 처리 응답
 message ProcessBlockResponse {
-    common.StatusCode status = 1;
+    common.Status status = 1;
     string message = 2;
     uint64 block_number = 3;
     int32 valid_transactions = 4;
@@ -35,7 +35,7 @@ message JoinChannelRequest {
 
 // JoinChannelResponse - 채널 참여 응답
 message JoinChannelResponse {
-    common.StatusCode status = 1;
+    common.Status status = 1;
     string message = 2;
     string channel_id = 3;
     uint64 current_height = 4;
